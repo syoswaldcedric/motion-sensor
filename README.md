@@ -52,3 +52,7 @@ python app.py
 - `app.py`: Main entry point of the application.
 - `requirements.txt`: List of Python dependencies.
 - `*.ui`: User interface files designed with Qt Designer.
+
+## Decisions
+
+UI Design: QtCreator + PySide6

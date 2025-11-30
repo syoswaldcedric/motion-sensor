@@ -383,6 +383,9 @@
                           <height>31</height>
                         </size>
                       </property>
+                      <property name="styleSheet">
+                        <string notr="true" />
+                      </property>
                       <property name="frameShape">
                         <enum>QFrame::Shape::StyledPanel</enum>
                       </property>
@@ -450,9 +453,9 @@
                         <property name="geometry">
                           <rect>
                             <x>0</x>
-                            <y>40</y>
+                            <y>31</y>
                             <width>229</width>
-                            <height>232</height>
+                            <height>241</height>
                           </rect>
                         </property>
                         <property name="sizePolicy">
@@ -464,6 +467,9 @@
                         <property name="toolTip">
                           <string notr="true" />
                         </property>
+                        <property name="styleSheet">
+                          <string notr="true">background-color: transparent;</string>
+                        </property>
                         <property name="frameShape">
                           <enum>QFrame::Shape::StyledPanel</enum>
                         </property>
@@ -471,7 +477,7 @@
                           <enum>QFrame::Shadow::Raised</enum>
                         </property>
                         <property name="currentIndex">
-                          <number>2</number>
+                          <number>1</number>
                         </property>
                         <widget class="QWidget" name="plot_frame">
                           <property name="enabled">
@@ -801,7 +807,7 @@
                             <property name="geometry">
                               <rect>
                                 <x>40</x>
-                                <y>30</y>
+                                <y>0</y>
                                 <width>141</width>
                                 <height>21</height>
                               </rect>
@@ -815,7 +821,7 @@
                             <widget class="QLabel" name="label_4">
                               <property name="geometry">
                                 <rect>
-                                  <x>10</x>
+                                  <x>20</x>
                                   <y>0</y>
                                   <width>121</width>
                                   <height>20</height>
@@ -837,274 +843,21 @@
                               </property>
                             </widget>
                           </widget>
-                          <widget class="QFrame" name="ram">
+                          <widget class="QWidget" name="gridLayoutWidget">
                             <property name="geometry">
                               <rect>
                                 <x>10</x>
-                                <y>70</y>
-                                <width>91</width>
-                                <height>61</height>
+                                <y>30</y>
+                                <width>201</width>
+                                <height>191</height>
                               </rect>
                             </property>
-                            <property name="styleSheet">
-                              <string notr="true">border: 1px solid #ddd;
-
-                                border-radius: 8px;
-                                background: white;
-                              </string>
-                            </property>
-                            <property name="frameShape">
-                              <enum>QFrame::Shape::StyledPanel</enum>
-                            </property>
-                            <property name="frameShadow">
-                              <enum>QFrame::Shadow::Raised</enum>
-                            </property>
-                            <widget class="QLabel" name="label_5">
-                              <property name="geometry">
-                                <rect>
-                                  <x>10</x>
-                                  <y>10</y>
-                                  <width>66</width>
-                                  <height>18</height>
-                                </rect>
+                            <layout class="QGridLayout" name="performance_grid"
+                              columnminimumwidth="0">
+                              <property name="sizeConstraint">
+                                <enum>QLayout::SizeConstraint::SetFixedSize</enum>
                               </property>
-                              <property name="styleSheet">
-                                <string notr="true">border: 0;
-                                  color: rgb(87, 58, 171);
-                                  font-weight: bold;
-                                  text-decoration: underline;
-
-                                </string>
-                              </property>
-                              <property name="text">
-                                <string>RAM</string>
-                              </property>
-                              <property name="alignment">
-                                <set>Qt::AlignmentFlag::AlignCenter</set>
-                              </property>
-                            </widget>
-                            <widget class="QLabel" name="label_9">
-                              <property name="geometry">
-                                <rect>
-                                  <x>10</x>
-                                  <y>37</y>
-                                  <width>66</width>
-                                  <height>18</height>
-                                </rect>
-                              </property>
-                              <property name="styleSheet">
-                                <string notr="true">color: green;
-                                  border: 0;
-                                  font-weight: bold,</string>
-                              </property>
-                              <property name="text">
-                                <string>20%</string>
-                              </property>
-                              <property name="alignment">
-                                <set>Qt::AlignmentFlag::AlignCenter</set>
-                              </property>
-                            </widget>
-                          </widget>
-                          <widget class="QFrame" name="memory">
-                            <property name="geometry">
-                              <rect>
-                                <x>10</x>
-                                <y>140</y>
-                                <width>91</width>
-                                <height>61</height>
-                              </rect>
-                            </property>
-                            <property name="styleSheet">
-                              <string notr="true">border: 1px solid #ddd;
-                                border-radius: 8px;
-                                background: white;
-                              </string>
-                            </property>
-                            <property name="frameShape">
-                              <enum>QFrame::Shape::StyledPanel</enum>
-                            </property>
-                            <property name="frameShadow">
-                              <enum>QFrame::Shadow::Raised</enum>
-                            </property>
-                            <widget class="QLabel" name="label_7">
-                              <property name="geometry">
-                                <rect>
-                                  <x>11</x>
-                                  <y>9</y>
-                                  <width>66</width>
-                                  <height>18</height>
-                                </rect>
-                              </property>
-                              <property name="styleSheet">
-                                <string notr="true">border: 0;
-                                  color: rgb(87, 58, 171);
-                                  font-weight: bold;
-                                  text-decoration: underline;
-
-                                </string>
-                              </property>
-                              <property name="text">
-                                <string>Memory</string>
-                              </property>
-                              <property name="alignment">
-                                <set>Qt::AlignmentFlag::AlignCenter</set>
-                              </property>
-                            </widget>
-                            <widget class="QLabel" name="label_11">
-                              <property name="geometry">
-                                <rect>
-                                  <x>10</x>
-                                  <y>37</y>
-                                  <width>66</width>
-                                  <height>18</height>
-                                </rect>
-                              </property>
-                              <property name="styleSheet">
-                                <string notr="true">color: green;
-                                  border: 0;
-                                  font-weight: bold,</string>
-                              </property>
-                              <property name="text">
-                                <string>30%</string>
-                              </property>
-                              <property name="alignment">
-                                <set>Qt::AlignmentFlag::AlignCenter</set>
-                              </property>
-                            </widget>
-                          </widget>
-                          <widget class="QFrame" name="cpu">
-                            <property name="geometry">
-                              <rect>
-                                <x>120</x>
-                                <y>70</y>
-                                <width>91</width>
-                                <height>61</height>
-                              </rect>
-                            </property>
-                            <property name="styleSheet">
-                              <string notr="true">border: 1px solid #ddd;
-                                border-radius: 8px;
-                                background: white;
-                              </string>
-                            </property>
-                            <property name="frameShape">
-                              <enum>QFrame::Shape::StyledPanel</enum>
-                            </property>
-                            <property name="frameShadow">
-                              <enum>QFrame::Shadow::Raised</enum>
-                            </property>
-                            <widget class="QLabel" name="label_6">
-                              <property name="geometry">
-                                <rect>
-                                  <x>11</x>
-                                  <y>10</y>
-                                  <width>66</width>
-                                  <height>18</height>
-                                </rect>
-                              </property>
-                              <property name="styleSheet">
-                                <string notr="true">border: 0;
-                                  color: rgb(87, 58, 171);
-                                  font-weight: bold;
-                                  text-decoration: underline;
-
-                                </string>
-                              </property>
-                              <property name="text">
-                                <string>CPU</string>
-                              </property>
-                              <property name="alignment">
-                                <set>Qt::AlignmentFlag::AlignCenter</set>
-                              </property>
-                            </widget>
-                            <widget class="QLabel" name="label_10">
-                              <property name="geometry">
-                                <rect>
-                                  <x>12</x>
-                                  <y>38</y>
-                                  <width>66</width>
-                                  <height>18</height>
-                                </rect>
-                              </property>
-                              <property name="styleSheet">
-                                <string notr="true">color: red;
-                                  border: 0;
-                                  font-weight: bold,</string>
-                              </property>
-                              <property name="text">
-                                <string>98%</string>
-                              </property>
-                              <property name="alignment">
-                                <set>Qt::AlignmentFlag::AlignCenter</set>
-                              </property>
-                            </widget>
-                          </widget>
-                          <widget class="QFrame" name="network">
-                            <property name="geometry">
-                              <rect>
-                                <x>120</x>
-                                <y>140</y>
-                                <width>91</width>
-                                <height>61</height>
-                              </rect>
-                            </property>
-                            <property name="styleSheet">
-                              <string notr="true">border: 1px solid #ddd;
-                                border-radius: 8px;
-                                background: white;
-                              </string>
-                            </property>
-                            <property name="frameShape">
-                              <enum>QFrame::Shape::StyledPanel</enum>
-                            </property>
-                            <property name="frameShadow">
-                              <enum>QFrame::Shadow::Raised</enum>
-                            </property>
-                            <widget class="QLabel" name="label_8">
-                              <property name="geometry">
-                                <rect>
-                                  <x>11</x>
-                                  <y>10</y>
-                                  <width>66</width>
-                                  <height>18</height>
-                                </rect>
-                              </property>
-                              <property name="styleSheet">
-                                <string notr="true">border: 0;
-                                  color: rgb(87, 58, 171);
-                                  font-weight: bold;
-                                  text-decoration: underline;
-
-                                </string>
-                              </property>
-                              <property name="text">
-                                <string>Network</string>
-                              </property>
-                              <property name="alignment">
-                                <set>Qt::AlignmentFlag::AlignCenter</set>
-                              </property>
-                            </widget>
-                            <widget class="QLabel" name="label_12">
-                              <property name="geometry">
-                                <rect>
-                                  <x>12</x>
-                                  <y>33</y>
-                                  <width>66</width>
-                                  <height>18</height>
-                                </rect>
-                              </property>
-                              <property name="styleSheet">
-                                <string notr="true">color: green;
-                                  border: 0;
-                                  font-weight: bold,</string>
-                              </property>
-                              <property name="text">
-                                <string>50kbs</string>
-                              </property>
-                              <property name="alignment">
-                                <set>Qt::AlignmentFlag::AlignCenter</set>
-                              </property>
-                            </widget>
+                            </layout>
                           </widget>
                         </widget>
                         <widget class="QWidget" name="status_frame">
