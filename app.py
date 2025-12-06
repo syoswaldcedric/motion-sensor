@@ -50,7 +50,6 @@ class MotionSensorApp(QObject):
             self.power_off_btn.clicked.connect(self.show_main_screen)
         else:
             print("Error: 'power_off_btn' not found in on_off_screen.ui")
-
         self.on_off_screen.show()
 
     def get_file_path(self, ui_file):
@@ -220,8 +219,6 @@ class MotionSensorApp(QObject):
         # create a frame at runtime
         frame = QFrame()
         frame.setFrameShape(QFrame.StyledPanel)  # optional styling
-        # Set maximum size
-        # frame.setFixedSize(100, 70)
         # Set background color to white
         frame.setStyleSheet("background-color: white; border-radius: 10px;")
         # create label and make it a child of the frame
