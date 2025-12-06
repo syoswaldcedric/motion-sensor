@@ -49,10 +49,37 @@ python app.py
 
 ## Project Structure
 
-- `app.py`: Main entry point of the application.
+- `app.py`: Main entry point of pyqt application.
+- `tk_app.py`: Main entry point of the tkinter application.
 - `requirements.txt`: List of Python dependencies.
 - `*.ui`: User interface files designed with Qt Designer.
 
 ## Decisions
 
-UI Design: QtCreator + PySide6
+**UI Design:** QtCreator + PySide6
+
+- unfortunately rasperypi 1b+ does not support pyqt6 and pyside6. We tried earlier versions of both pyqt and pyside but they did not work. so we decided to use tkinter.
+
+app.py is the main entry point for the pyqt application.
+
+**Pros of Pyqt6:**
+
+- Seamless integration with Qt Designer
+- More features and customization
+
+**Cons of Pyqt6:**
+
+- Not supported on rasperypi 1b+
+
+**TKinter:**
+tk_app.py is the main entry point for the tkinter application.
+
+**Pros of Tkinter:**
+
+- Supported on rasperypi 1b+
+
+**Cons of Tkinter:**
+
+- Less features and customization
+- programming UI directly in code
+- requires more code and time to achieve the same result

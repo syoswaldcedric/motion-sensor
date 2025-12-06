@@ -1,4 +1,5 @@
 import time
+import psutil
 from tkinter import (
     Scrollbar,
     Listbox,
@@ -17,6 +18,15 @@ from tkinter import (
     Frame,
     PhotoImage,
 )
+
+
+label_props = {
+    "relief": "flat",
+    "compound": "top",
+    "fg": "blue",  # Text color
+    "activeforeground": "blue",
+    "font": ("Arial", 20, "bold"),
+}
 
 
 class MotionSensorApp:
@@ -62,7 +72,8 @@ class MotionSensorApp:
             },
             {"name": "status", "icon": PhotoImage(file="./assets/status.png")},
         ]
-
+        # dictionary to store properties monitored
+        self.properties_monitored = dict()
         # image references
         self.light_off_img = PhotoImage(file="./assets/light_off.png")
         self.light_on_img = PhotoImage(file="./assets/light_on.png")
@@ -77,12 +88,16 @@ class MotionSensorApp:
         self.date_time_var = StringVar()
         self.date_time_var.set("06:12:2025 00:00:00")
 
+        self.target_property_var = StringVar()
+        self.target_property_var.set("Performance")
+
         # build all the screens
-        self.build_on_off_screen()
-        self.build_main_screen()
+        self.build_on_off_screen(self.on_off_frame)
+        self.build_main_screen(self.main_frame)
 
         # show the on_off_screen
         self.show_screen(self.on_off_frame)
+        # self.update_properties()
 
         # start date_time_update
         self.root.after(1000, self.date_time_update)  # call again in 1 second
@@ -95,22 +110,52 @@ class MotionSensorApp:
             self.on_off_frame.pack_forget()
             self.main_frame.pack(fill=BOTH, expand=True)
 
-    def build_on_off_screen(self):
-        frame = Frame(self.on_off_frame)
+    def get_system_usage(self):
+        """
+        Get the system usage
+        Args:
+            None
+        Returns:
+            dict: The system usage with the format:
+                {
+                    "key": "used;total;unit",
+                    "cpu": "used;100%;%",
+                }
+        """
+        # CPU usage
+        cpu_percent = psutil.cpu_percent(
+            interval=0
+        )  # interval=0 for instant usage (non blocking main thread)
+        # cpu_freq = psutil.cpu_freq()
+
+        # RAM usage
+        ram = psutil.virtual_memory()
+
+        # Disk usage (root partition)
+        disk = psutil.disk_usage("/")
+
+        return {
+            # "ram": f"{round(ram.used / (1024**3), 2)}/{round(ram.total / (1024**3), 2)}",
+            "ram": f"{round(ram.used / (1024**3), 2)};{round(ram.total / (1024**3), 2)};GB",
+            # "Memory": f"{round(disk.used / (1024**3), 2)}/{round(disk.total / (1024**3), 2)}",
+            "Memory": f"{round(disk.used / (1024**3), 2)};{round(disk.total / (1024**3), 2)};GB",
+            "cpu": f"{cpu_percent};100;%",
+        }
+
+    def build_on_off_screen(self, frame):
+        frame = Frame(frame)
         frame.pack(fill=BOTH, expand=True)
 
         btn = Button(
             frame,
             image=self.power_img,
-            # command=self.show_main_screen,
             command=lambda: self.show_screen(self.main_frame),
-            # command=lambda: self.on_off_frame.pack_forget(),
             bd=0,
             highlightthickness=0,
             relief="flat",
             text="POWER ON",
-            bg=self.frame.cget("bg"),  # match parent's bg color
-            activebackground=self.frame.cget("bg"),
+            bg=frame.cget("bg"),  # match parent's bg color
+            activebackground=frame.cget("bg"),
             cursor="hand2",
             compound="top",
             pady=15,
@@ -120,13 +165,15 @@ class MotionSensorApp:
         )
         btn.pack(expand=True)
 
-    def build_main_screen(self):
+    def build_main_screen(self, frame):
         # Add widgets in a grid
-        left_frame = Frame(self.main_frame)
-        right_frame = Frame(self.main_frame)
+        left_frame = Frame(frame)
+
+        right_frame = Frame(frame)
 
         # left side widgets
         left_frame.place(relx=0, rely=0, relwidth=0.4, relheight=1)
+        # left_frame.place(relx=0, rely=0, relwidth=0.395, relheight=1)
         right_frame.place(relx=0.4, rely=0, relwidth=0.6, relheight=1)
 
         left_top_frame = Frame(left_frame)
@@ -177,11 +224,8 @@ class MotionSensorApp:
         bulb_label.pack(expand=True)
 
         # right side widgets
-        power_frame = Frame(right_frame, bg="red")
-        power_frame.place(relx=0, rely=0, relwidth=1, relheight=0.3)
-
-        metrics_frame = Frame(right_frame, bg="blue")
-        metrics_frame.place(relx=0, rely=0.3, relwidth=1, relheight=0.7)
+        power_frame = Frame(right_frame)
+        power_frame.place(relx=0, rely=0, relwidth=1, relheight=0.2)
 
         power_off_btn = Button(
             power_frame,
@@ -200,8 +244,97 @@ class MotionSensorApp:
             pady=10,
         )
 
+        target_property_label = Label(
+            power_frame, textvariable=self.target_property_var, **label_props
+        )
+        target_property_label.pack(expand=True, anchor="center")
+
+        metrics_wrapper_frame = Frame(right_frame)
+        metrics_wrapper_frame.place(relx=0, rely=0.2, relwidth=1, relheight=0.8)
+
+        metrics_frame = Frame(metrics_wrapper_frame)
+        metrics_frame.pack(expand=True, anchor="n")
+
+        # add the properties
+        system_usage = self.get_system_usage()
+        cols = 2
+        for index, (key, value) in enumerate(system_usage.items()):
+            row = index // cols
+            col = index % cols
+            property = self.create_performance_widget(metrics_frame, key, value)
+            property.grid(row=row, column=col, padx=10, pady=10)
+
+    def create_performance_widget(self, widget_parent, label, value):
+        """
+        Create a performance widget at runtime
+        Args:
+            label (str): The label of the performance widget
+            value (str): The value of the performance widget
+        Returns:
+            Frame: The performance widget
+            children Widget:
+                performance_label (Label): The label of the performance widget
+                performance_value (Label): The value of the performance widget
+        """
+        # create a frame at runtime
+        frame = Frame(widget_parent)
+        # frame.setFrameShape("flat")  # optional styling
+        # Set background color to white
+        frame.configure(bg="white", border=10)
+        # create label and make it a child of the frame
+        performance_label = Label(frame, text=label.upper())
+        performance_label.pack(expand=True, anchor="center")
+        performance_label.configure(
+            fg="blue",  # Text color
+            font=("Arial", 12, "bold"),
+        )
+        # create performance value and make it a child of the layout
+        performance_value = Label(frame, text=str(value))
+        performance_value.pack(expand=True, anchor="center")
+        performance_value.configure(
+            fg="green",  # Text color
+            font=("Arial", 14, "bold"),
+        )
+        # add performance value to the properties_monitored dictionary
+        self.properties_monitored[label] = performance_value
+        # (optional) add a layout inside the frame to manage children properly
+        frame_layout = Frame(frame, width=100, height=25)
+        # frame.setFixedSize(100, 70)
+        frame_layout.pack(expand=True, anchor="center")
+        performance_label.pack(expand=True, anchor="center")
+        performance_value.pack(expand=True, anchor="center")
+
+        return frame
+
+    def update_properties(self):
+        """
+        Update the properties
+        Args:
+            None
+        Returns:
+            None
+        """
+        system_usage = self.get_system_usage()
+
+        for key, value in system_usage.items():
+            used, total, unit = value.split(";")
+            performance = self.properties_monitored[key]
+            performance["text"] = f"{used} {unit}"
+            # calculate the percentage used
+            percent_used = (float(used) / float(total)) * 100
+            very_good_condition = percent_used <= 30
+            good_condition = percent_used > 30 and percent_used <= 69
+            performance.configure(
+                fg="green"
+                if very_good_condition
+                else "blue"
+                if good_condition
+                else "red"
+            )
+
     def date_time_update(self):
         self.date_time_var.set(time.strftime("%d-%m-%Y %H:%M:%S"))
+        self.update_properties()
         self.root.after(1000, self.date_time_update)
 
     def center_window(self, width, height):
