@@ -60,7 +60,7 @@ python app.py
 
 - unfortunately rasperypi 1b+ does not support pyqt6 and pyside6. We tried earlier versions of both pyqt and pyside but they did not work. so we decided to use tkinter.
 
-app.py is the main entry point for the pyqt application.
+pyqt_app.py is the main entry point for the pyqt application.
 
 **Pros of Pyqt6:**
 
@@ -72,7 +72,7 @@ app.py is the main entry point for the pyqt application.
 - Not supported on rasperypi 1b+
 
 **TKinter:**
-tk_app.py is the main entry point for the tkinter application.
+app.py is the main entry point for the tkinter application.
 
 **Pros of Tkinter:**
 
@@ -83,3 +83,16 @@ tk_app.py is the main entry point for the tkinter application.
 - Less features and customization
 - programming UI directly in code
 - requires more code and time to achieve the same result
+
+**Data Storage:**
+
+1. Storage Format: (Excel/ Csv)
+
+- Data is stored in a dictionary and then converted to a pandas DataFrame.
+- The DataFrame is then saved to an Excel file using openpyxl.
+
+Cons:
+
+- Writing large files with thousands of rows may be slow or memory-heavy
+
+2. Csv: if Excel format is not achievable, then we will save the data to a csv file.

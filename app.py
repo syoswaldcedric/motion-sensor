@@ -1,176 +1,151 @@
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import (
-    QApplication,
-    QToolButton,
-    QStackedWidget,
-    QLabel,
-    QFrame,
-    QVBoxLayout,
-    QGridLayout,
-    QSizePolicy,
-)
-from PySide6.QtCore import QTimer, QObject, QDateTime, Qt
-import sys
 import time
-import os
+from metadata import metadata
+from collections import defaultdict
 import psutil
+import pandas as pd
+from tkinter import (
+    Scrollbar,
+    Listbox,
+    PhotoImage,
+    RIGHT,
+    StringVar,
+    Label,
+    Button,
+    LEFT,
+    Y,
+    BOTH,
+    END,
+    Tk,
+    Menu,
+    mainloop,
+    font,
+    Frame,
+    PhotoImage,
+    filedialog,
+    messagebox,
+)
 
 
-class MotionSensorApp(QObject):
-    def __init__(self):
-        super().__init__()
-        self.app = QApplication(sys.argv)
-        self.loader = QUiLoader()
-        self.on_off_screen = None
-        self.main_screen = None
-        self.property_stack = None
-        self.screen_stack = None
-        self.power_off_btn = None
-        self.power_on_btn = None
-        self.date_time_label = None
-        self.performance_grid = None
+class MotionSensorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title(metadata["name"])
+        self.icon = PhotoImage(file="./assets/graph.png")
+        self.root.iconphoto(True, self.icon)
+        self.root.resizable(False, False)
+
+        self.window_width = 800
+        self.window_height = 600
+        self.center_window(self.window_width, self.window_height)
+
+        # Create a frame to hold widgets
+        self.frame = Frame(root)
+        self.frame.pack(fill=BOTH, expand=True)
+
+        # create the menu
+        self.menu = Menu(self.root, tearoff=0)  # tearoff=0 to disable dashed line
+        filemenu = Menu(self.menu, tearoff=0)
+        self.menu.add_cascade(label="File", menu=filemenu)
+
+        # filemenu.add_command(label="New")
+        # filemenu.add_command(label="Open...")
+        filemenu.add_command(label="Save", command=self.save)
+        filemenu.add_separator()
+        filemenu.add_command(label="Exit", command=root.quit)
+
+        helpmenu = Menu(self.menu, tearoff=0)
+        self.menu.add_cascade(label="Help", menu=helpmenu)
+        helpmenu.add_command(label="About", command=self.about)
+
+        self.root.config(menu=self.menu)
+        self.on_off_frame = Frame(self.frame)
+        self.main_frame = Frame(self.frame)
+
+        self.label_props = {
+            "relief": "flat",
+            "compound": "top",
+            "fg": "blue",  # Text color
+            "activeforeground": "blue",
+            # "font": ("Arial", 20, "bold"),
+            "font": font.Font(
+                family="Helvetica", size=12, weight="bold", underline=True
+            ),
+        }
+
+        self.tab_list = [
+            {"name": "plot", "icon": PhotoImage(file="./assets/graph.png")},
+            {
+                "name": "performance",
+                "icon": PhotoImage(file="./assets/performance.png"),
+            },
+            {"name": "status", "icon": PhotoImage(file="./assets/status.png")},
+        ]
+        # dictionary to store properties monitored
         self.properties_monitored = dict()
-        self.is_monitoring = False
+        # self.data_storage = dict()
+        self.data_storage = defaultdict(list)
+        # image references
+        self.light_off_img = PhotoImage(file="./assets/light_off.png")
+        self.light_on_img = PhotoImage(file="./assets/light_on.png")
+        self.power_img = PhotoImage(file="./assets/power_btn_lg.png")
+        self.power_img_sm = PhotoImage(file="./assets/power_btn.png")
 
-        self.show_main_screen()
+        # Variables
+        # allows easy access to the light status
+        self.light_status = StringVar()
+        self.light_status.set("LIGHT OFF")
 
-        # Timer: call update_time() every second
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_time)
-        self.timer.start(1000)  # 1000 ms = 1 second
+        self.date_time_var = StringVar()
+        self.date_time_var.set("06:12:2025 00:00:00")
 
-    def show_on_off_screen(self):
-        # Load the on_off_screen.ui
-        ui_file = self.get_file_path("on_off_screen.ui")
-        self.on_off_screen = self.loader.load(ui_file)
+        self.target_property_var = StringVar()
+        self.target_property_var.set("Performance")
 
-        # Find the power button and connect the click event
-        self.power_off_btn = self.on_off_screen.findChild(QToolButton, "power_off_btn")
-        if self.power_off_btn:
-            self.power_off_btn.clicked.connect(self.show_main_screen)
-        else:
-            print("Error: 'power_off_btn' not found in on_off_screen.ui")
-        self.on_off_screen.show()
+        # build all the screens
+        self.build_on_off_screen(self.on_off_frame)
+        self.build_main_screen(self.main_frame)
 
-    def get_file_path(self, ui_file):
-        return os.path.join(os.path.dirname(__file__), ui_file)
+        # show the on_off_screen
+        self.show_screen(self.on_off_frame)
+        # self.update_properties()
 
-    def show_main_screen(self):
-        """
-        Show the main screen
-        Args:
-            None
-        Returns:
-            None
-        """
-        # Load the main_screen.ui
-        ui_file = self.get_file_path("main_screen.ui")
-        self.main_screen = self.loader.load(ui_file)
+        # start date_time_update
+        self.root.after(1000, self.date_time_update)  # call again in 1 second
 
-        self.main_screen.show()
-        # if self.on_off_screen:
-        #     self.on_off_screen.hide()  # keep screen hidden for back navigation
-
-        # Find propert buttons
-        self.plot_btn = self.main_screen.findChild(QToolButton, "plot_btn")
-        self.performance_btn = self.main_screen.findChild(
-            QToolButton, "performance_btn"
-        )
-        self.status_btn = self.main_screen.findChild(QToolButton, "status_btn")
-        self.date_time_label = self.main_screen.findChild(QLabel, "date_time_label")
-        self.performance_grid = self.main_screen.findChild(
-            QGridLayout, "performance_grid"
+    def about(self):
+        messagebox.showinfo(
+            f"About {metadata['name']}",
+            f"{metadata['description']}\n\nVersion: {metadata['version']}\nAuthors: {', '.join(metadata['authors'])}\nLicense: {metadata['license']}\nGitHub: {metadata['github_url']}\nIssues: {metadata['issues']}",
         )
 
-        # Find property stack
-        self.property_stack = self.main_screen.findChild(
-            QStackedWidget, "property_stack"
+    def save(self):
+        # Ask user where to save
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            initialfile="motion_sensor_data.xlsx",
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
         )
-        # Find screen stack
-        self.screen_stack = self.main_screen.findChild(QStackedWidget, "screen_stack")
-        if not self.screen_stack:
-            print("Error: 'screen_stack' not found in main_screen.ui")
-        if self.performance_grid:
-            system_usage = self.get_system_usage()
-            cols = 2
-            for index, (key, value) in enumerate(system_usage.items()):
-                row = index // cols
-                col = index % cols
-                performance = self.create_performance_widget(key, value)
-                self.performance_grid.addWidget(performance, row, col)
-            # set is_monitoring to True
-            self.is_monitoring = True
-        else:
-            print("Error: 'performance_grid' not found in main_screen.ui")
-        if self.property_stack:
-            if self.plot_btn:
-                self.plot_btn.clicked.connect(
-                    lambda: self.property_stack.setCurrentIndex(0)
+        if file_path:
+            try:
+                # Convert dictionary to DataFrame
+                df = pd.DataFrame(
+                    self.data_storage,
                 )
-            if self.performance_btn:
-                self.performance_btn.clicked.connect(
-                    lambda: self.property_stack.setCurrentIndex(1)
-                )
-            if self.status_btn:
-                self.status_btn.clicked.connect(
-                    lambda: self.property_stack.setCurrentIndex(2)
-                )
-        else:
-            print("Error: 'property_stack' not found in main_screen.ui")
+                # save the DataFrame to an Excel file
+                df.to_excel(file_path, index=False)
+                # save the DataFrame to a CSV file if excel is not achievable on raspberypi 1b+
+                # df.to_csv(file_path, index=False)
+                messagebox.showinfo("Success", f"Data saved to {file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not save file:\n{e}")
 
-        # Find the power buttons and connect the click event
-        self.power_off_btn = self.main_screen.findChild(QToolButton, "power_off_btn")
-        self.power_on_btn = self.main_screen.findChild(QToolButton, "power_on_btn")
-        if self.power_off_btn:
-            # self.power_off_btn.clicked.connect(self.show_on_off_screen)
-            self.power_off_btn.clicked.connect(
-                lambda: self.screen_stack.setCurrentIndex(0)
-            )
-        else:
-            print("Error: 'power_off_btn' not found in main_screen.ui")
-        if self.power_on_btn:
-            self.power_on_btn.clicked.connect(
-                lambda: self.screen_stack.setCurrentIndex(1)
-            )
-        else:
-            print("Error: 'power_on_btn' not found in main_screen.ui")
-
-    def update_time(self):
-        """
-        Update the time
-        Args:
-            None
-        Returns:
-            None
-        """
-        current_time = QDateTime.currentDateTime()
-        time_text = current_time.toString("yyyy-MM-dd hh:mm:ss")
-        self.date_time_label.setText(time_text)
-
-        if self.is_monitoring:
-            self.update_properties()
-
-    def update_properties(self):
-        """
-        Update the properties
-        Args:
-            None
-        Returns:
-            None
-        """
-        system_usage = self.get_system_usage()
-
-        for key, value in system_usage.items():
-            used, total, unit = value.split(";")
-            performance = self.properties_monitored[key]
-            performance.setText(f"{used} {unit}")
-            # calculate the percentage used
-            percent_used = (float(used) / float(total)) * 100
-            very_good_condition = percent_used <= 30
-            good_condition = percent_used > 30 and percent_used <= 69
-            performance.setStyleSheet(
-                f"color: {'green' if very_good_condition else 'blue' if good_condition else 'red'};"
-            )
+    def show_screen(self, new_frame):
+        if new_frame == self.on_off_frame:
+            self.main_frame.pack_forget()
+            self.on_off_frame.pack(fill=BOTH, expand=True)
+        elif new_frame == self.main_frame:
+            self.on_off_frame.pack_forget()
+            self.main_frame.pack(fill=BOTH, expand=True)
 
     def get_system_usage(self):
         """
@@ -198,59 +173,244 @@ class MotionSensorApp(QObject):
 
         return {
             # "ram": f"{round(ram.used / (1024**3), 2)}/{round(ram.total / (1024**3), 2)}",
-            "ram": f"{round(ram.used / (1024**3), 2)};{round(ram.total / (1024**3), 2)};GB",
+            "RAM": f"{round(ram.used / (1024**3), 2)};{round(ram.total / (1024**3), 2)};GB",
             # "Memory": f"{round(disk.used / (1024**3), 2)}/{round(disk.total / (1024**3), 2)}",
-            "Memory": f"{round(disk.used / (1024**3), 2)};{round(disk.total / (1024**3), 2)};GB",
-            "cpu": f"{cpu_percent};100;%",
+            "DISK": f"{round(disk.used / (1024**3), 2)};{round(disk.total / (1024**3), 2)};GB",
+            "CPU": f"{cpu_percent};100;%",
         }
 
-    def create_performance_widget(self, label, value):
+    def build_on_off_screen(self, frame):
+        frame = Frame(frame)
+        frame.pack(fill=BOTH, expand=True)
+
+        btn = Button(
+            frame,
+            image=self.power_img,
+            command=lambda: self.show_screen(self.main_frame),
+            bd=0,
+            highlightthickness=0,
+            relief="flat",
+            text="POWER ON",
+            bg=frame.cget("bg"),  # match parent's bg color
+            activebackground=frame.cget("bg"),
+            cursor="hand2",
+            compound="top",
+            pady=15,
+            fg="blue",  # Text color
+            activeforeground="blue",
+            font=("Arial", 22, "bold"),
+        )
+        btn.pack(expand=True)
+
+    def build_main_screen(self, frame):
+        # Add widgets in a grid
+        left_frame = Frame(frame)
+
+        right_frame = Frame(frame, bg="white")
+
+        # left side widgets
+        left_frame.place(relx=0, rely=0, relwidth=0.4, relheight=1)
+        # left_frame.place(relx=0, rely=0, relwidth=0.395, relheight=1)
+        right_frame.place(relx=0.4, rely=0, relwidth=0.6, relheight=1)
+
+        left_top_frame = Frame(left_frame)
+        left_top_frame.place(relx=0, rely=0, relwidth=1, relheight=0.25)
+
+        # timer
+        time_label = Label(
+            left_top_frame,
+            textvariable=self.date_time_var,
+            font=("Arial", 12, "bold"),
+            fg="blue",  # Text color
+        )
+        time_label.pack(expand=True, fill="x")
+
+        tabs_frame = Frame(left_top_frame)
+        tabs_frame.pack(expand=True)
+
+        for index, tab in enumerate(self.tab_list):
+            _name = tab["name"].capitalize()
+            btn = Button(
+                tabs_frame,
+                text=_name,
+                image=tab["icon"],
+                relief="raised",
+                activebackground=self.frame.cget("bg"),
+                cursor="hand2",
+                compound="top",
+                command=lambda x=_name: self.target_property_var.set(x),
+                fg="blue",  # Text color
+                activeforeground="blue",
+                # bd=0,
+                # font=("Arial", 16, "normal"),
+                font=font.Font(family="Helvetica", size=12, weight="bold"),
+            )
+            btn.grid(row=1, column=index, padx=5, pady=5, sticky="nsew")
+
+            tabs_frame.grid_columnconfigure(index, weight=1, minsize=100)
+        tabs_frame.grid_rowconfigure(1, weight=1, minsize=70)
+
+        light_frame = Frame(left_frame)
+        light_frame.pack(expand=True)
+
+        bulb_label = Label(
+            light_frame,
+            image=self.light_on_img,
+            textvariable=self.light_status,
+            relief="flat",
+            activebackground=self.frame.cget("bg"),
+            compound="top",
+            fg="blue",  # Text color
+            activeforeground="blue",
+            font=("Arial", 20, "bold"),
+        )
+        bulb_label.pack(expand=True)
+
+        # right side widgets
+        power_frame = Frame(right_frame, bg=right_frame.cget("bg"))
+        power_frame.place(relx=0, rely=0, relwidth=1, relheight=0.2)
+
+        power_off_btn = Button(
+            power_frame,
+            image=self.power_img_sm,
+            command=lambda: self.show_screen(self.on_off_frame),
+            relief="flat",
+            highlightthickness=0,
+            activebackground=right_frame.cget("bg"),
+            bg=right_frame.cget("bg"),
+            cursor="hand2",
+            compound="top",
+            bd=0,
+            fg="blue",  # Text color
+            activeforeground="blue",
+        )
+        power_off_btn.pack(
+            anchor="ne",
+            padx=10,
+            pady=10,
+        )
+
+        target_property_label = Label(
+            power_frame,
+            textvariable=self.target_property_var,
+            bg=right_frame.cget("bg"),
+            **self.label_props,
+        )
+        target_property_label.pack(expand=True, anchor="center")
+
+        metrics_wrapper_frame = Frame(right_frame, bg=right_frame.cget("bg"))
+        metrics_wrapper_frame.place(relx=0, rely=0.2, relwidth=1, relheight=0.8)
+
+        metrics_frame = Frame(
+            metrics_wrapper_frame, bg=metrics_wrapper_frame.cget("bg")
+        )
+        metrics_frame.pack(expand=True, anchor="n")
+
+        # add the properties
+        system_usage = self.get_system_usage()
+        cols = 2
+        for index, (key, value) in enumerate(system_usage.items()):
+            row = index // cols
+            col = index % cols
+            property = self.create_performance_widget(metrics_frame, key, value)
+            property.grid(row=row, column=col, sticky="nsew", padx=10, pady=10)
+
+            # metrics_frame.grid_configure(row=row, column=col, weight=1)
+            metrics_frame.grid_columnconfigure(col, weight=1, minsize=130)
+            metrics_frame.grid_rowconfigure(row, weight=1, minsize=100)
+
+    def create_performance_widget(self, widget_parent, label, value):
         """
         Create a performance widget at runtime
         Args:
             label (str): The label of the performance widget
             value (str): The value of the performance widget
         Returns:
-            QFrame: The performance widget
-                children Widget:
-                    performance_label (QLabel): The label of the performance widget
-                    performance_value (QLabel): The value of the performance widget
+            Frame: The performance widget
+            children Widget:
+                performance_label (Label): The label of the performance widget
+                performance_value (Label): The value of the performance widget
         """
         # create a frame at runtime
-        frame = QFrame()
-        frame.setFrameShape(QFrame.StyledPanel)  # optional styling
+        frame = Frame(widget_parent)
         # Set background color to white
-        frame.setStyleSheet("background-color: white; border-radius: 10px;")
+        frame.configure(bd=5, relief="raised")
         # create label and make it a child of the frame
-        performance_label = QLabel(label.upper())
-        performance_label.setAlignment(Qt.AlignCenter)
-        performance_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        performance_label.setStyleSheet(
-            "color: blue; font-weight: bold; font-size: 12px;"
+        performance_label = Label(frame, text=label.upper())
+        performance_label.pack(expand=True, anchor="center")
+        performance_label.configure(
+            fg="blue",  # Text color
+            font=("Arial", 10, "bold"),
         )
         # create performance value and make it a child of the layout
-        performance_value = QLabel(str(value))
-        performance_value.setObjectName(label)
-        performance_value.setAlignment(Qt.AlignCenter)
-        performance_value.setStyleSheet(
-            "color: green; font-size: 14px; font-weight: bold;"
-            # f"color: {'blue' if int(value) < 70 else 'red'}; font-size: 12px; font-weight: bold;"
+        performance_value = Label(frame, text=str(value))
+        performance_value.pack(expand=True, fill="both", anchor="center")
+        performance_value.configure(
+            fg="green",  # Text color
+            font=("Arial", 14, "normal"),
         )
         # add performance value to the properties_monitored dictionary
         self.properties_monitored[label] = performance_value
-        # (optional) add a layout inside the frame to manage children properly
-        frame_layout = QVBoxLayout(frame)
-        frame.setFixedSize(100, 70)
-        frame_layout.addWidget(performance_label)  # add label to the frame
-        frame_layout.addWidget(performance_value)  # add value to the frame
-        frame_layout.setAlignment(Qt.AlignCenter)
 
         return frame
 
-    def run(self):
-        sys.exit(self.app.exec())
+    def update_properties(self):
+        """
+        Update the properties
+        Args:
+            None
+        Returns:
+            None
+        """
+        system_usage = self.get_system_usage()
+        # add time stamp to the data storage
+        self.data_storage["Timestamp"].append(time.strftime("%d-%m-%Y %H:%M:%S"))
+        # self.data_storage["timestamp"] = self.data_storage["timestamp"].append(
+        #     time.strftime("%d-%m-%Y %H:%M:%S")
+        # )
+        for key, value in system_usage.items():
+            used, total, unit = value.split(";")
+            # update the data storage
+            self.data_storage[key].append(f"{used} {unit}")
+            # self.data_storage[key] = self.data_storage[key].append(f"{used} {unit}")
+
+            # update the performance widget
+            performance = self.properties_monitored[key]
+            performance["text"] = f"{used} {unit}"
+            # calculate the percentage used
+            percent_used = (float(used) / float(total)) * 100
+            very_good_condition = percent_used <= 30
+            good_condition = percent_used > 30 and percent_used <= 69
+            performance.configure(
+                fg="green"
+                if very_good_condition
+                else "blue"
+                if good_condition
+                else "red"
+            )
+
+    def date_time_update(self):
+        self.date_time_var.set(time.strftime("%d-%m-%Y %H:%M:%S"))
+        self.update_properties()
+        self.root.after(1000, self.date_time_update)
+
+    def center_window(self, width, height):
+        # self.root.update_idletasks()  # Important!
+        # Get screen dimensions
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+
+        # Calculate position
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+
+        # Apply geometry
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
 
 
 if __name__ == "__main__":
-    motion_app = MotionSensorApp()
-    motion_app.run()
+    root = Tk()
+    # create the application
+    app = MotionSensorApp(root)
+    # start the program
+    root.mainloop()
