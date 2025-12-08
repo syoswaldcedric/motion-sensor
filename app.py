@@ -24,6 +24,7 @@ from tkinter import (
     filedialog,
     messagebox,
 )
+from project_utils import plot_graph
 
 
 class MotionSensorApp:
@@ -47,8 +48,6 @@ class MotionSensorApp:
         filemenu = Menu(self.menu, tearoff=0)
         self.menu.add_cascade(label="File", menu=filemenu)
 
-        # filemenu.add_command(label="New")
-        # filemenu.add_command(label="Open...")
         filemenu.add_command(label="Save", command=self.save)
         filemenu.add_separator()
         filemenu.add_command(label="Exit", command=root.quit)
@@ -82,24 +81,30 @@ class MotionSensorApp:
         ]
         # dictionary to store properties monitored
         self.properties_monitored = dict()
-        # self.data_storage = dict()
+        # data storage
         self.data_storage = defaultdict(list)
+
         # image references
-        self.light_off_img = PhotoImage(file="./assets/light_off.png")
-        self.light_on_img = PhotoImage(file="./assets/light_on.png")
+        self.light_off_img = PhotoImage(file="./assets/light_off_md.png")
+        self.light_on_img = PhotoImage(file="./assets/light_on_md.png")
         self.power_img = PhotoImage(file="./assets/power_btn_lg.png")
         self.power_img_sm = PhotoImage(file="./assets/power_btn.png")
 
         # Variables
         # allows easy access to the light status
         self.light_status = StringVar()
-        self.light_status.set("LIGHT OFF")
+        self.light_status.set("LIGHT ON")
 
         self.date_time_var = StringVar()
         self.date_time_var.set("06:12:2025 00:00:00")
 
         self.target_property_var = StringVar()
         self.target_property_var.set("Performance")
+        # bind the target_property_var to the handle_active_tab method, so the method is called when the variable changes
+        self.target_property_var.trace_add("write", self.handle_active_tab)
+
+        # frames
+        self.tab_properties_frame = None
 
         # build all the screens
         self.build_on_off_screen(self.on_off_frame)
@@ -256,6 +261,7 @@ class MotionSensorApp:
         bulb_label = Label(
             light_frame,
             image=self.light_on_img,
+            height=300,
             textvariable=self.light_status,
             relief="flat",
             activebackground=self.frame.cget("bg"),
@@ -298,14 +304,23 @@ class MotionSensorApp:
         )
         target_property_label.pack(expand=True, anchor="center")
 
-        metrics_wrapper_frame = Frame(right_frame, bg=right_frame.cget("bg"))
-        metrics_wrapper_frame.place(relx=0, rely=0.2, relwidth=1, relheight=0.8)
+        self.tab_properties_frame = Frame(right_frame, bg=right_frame.cget("bg"))
+        self.tab_properties_frame.place(relx=0, rely=0.2, relwidth=1, relheight=0.8)
 
-        metrics_frame = Frame(
-            metrics_wrapper_frame, bg=metrics_wrapper_frame.cget("bg")
+        performance_frame = self.get_performance_frame(self.tab_properties_frame)
+        performance_frame.frame_id = "performance"
+        plot_frame = self.get_plot_frame(
+            self.tab_properties_frame,
         )
-        metrics_frame.pack(expand=True, anchor="n")
+        plot_frame.frame_id = "plot"
+        status_frame = self.get_status_frame(self.tab_properties_frame)
+        status_frame.frame_id = "status"
 
+        self.handle_active_tab()
+
+    def get_performance_frame(self, parent):
+        metrics_frame = Frame(parent, bg=parent.cget("bg"))
+        metrics_frame.pack(expand=True, anchor="n")
         # add the properties
         system_usage = self.get_system_usage()
         cols = 2
@@ -316,8 +331,25 @@ class MotionSensorApp:
             property.grid(row=row, column=col, sticky="nsew", padx=10, pady=10)
 
             # metrics_frame.grid_configure(row=row, column=col, weight=1)
-            metrics_frame.grid_columnconfigure(col, weight=1, minsize=130)
+            metrics_frame.grid_columnconfigure(col, weight=1, minsize=150)
             metrics_frame.grid_rowconfigure(row, weight=1, minsize=100)
+        return metrics_frame
+
+    def get_plot_frame(self, parent):
+        return plot_graph(
+            parent,
+            x_label="CPU Usage",
+            y_label="Time (Seconds)",
+            # values=self.data_storage["CPU"],
+        )
+
+    def get_status_frame(self, parent):
+        frame = Frame(parent, bg=parent.cget("bg"))
+        status_label = Label(
+            frame, text="Hello from Status", bg=parent.cget("bg"), **self.label_props
+        )
+        status_label.pack(expand=True, anchor="n")
+        return frame
 
     def create_performance_widget(self, widget_parent, label, value):
         """
@@ -365,14 +397,10 @@ class MotionSensorApp:
         system_usage = self.get_system_usage()
         # add time stamp to the data storage
         self.data_storage["Timestamp"].append(time.strftime("%d-%m-%Y %H:%M:%S"))
-        # self.data_storage["timestamp"] = self.data_storage["timestamp"].append(
-        #     time.strftime("%d-%m-%Y %H:%M:%S")
-        # )
         for key, value in system_usage.items():
             used, total, unit = value.split(";")
             # update the data storage
             self.data_storage[key].append(f"{used} {unit}")
-            # self.data_storage[key] = self.data_storage[key].append(f"{used} {unit}")
 
             # update the performance widget
             performance = self.properties_monitored[key]
@@ -393,6 +421,15 @@ class MotionSensorApp:
         self.date_time_var.set(time.strftime("%d-%m-%Y %H:%M:%S"))
         self.update_properties()
         self.root.after(1000, self.date_time_update)
+
+    def handle_active_tab(self, *args):
+        target_prop = self.target_property_var.get().lower()
+        children = self.tab_properties_frame.winfo_children()
+        for child in children:
+            if child.frame_id == target_prop:
+                child.pack(expand=True, anchor="n")
+            else:
+                child.pack_forget()
 
     def center_window(self, width, height):
         # self.root.update_idletasks()  # Important!
