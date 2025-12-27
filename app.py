@@ -1,453 +1,782 @@
+import os
+import sys
 import time
-from metadata import metadata
-from collections import defaultdict
+import threading
+from collections import deque
+from datetime import datetime
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+import subprocess
+
 import psutil
-import pandas as pd
-from tkinter import (
-    Scrollbar,
-    Listbox,
-    PhotoImage,
-    RIGHT,
-    StringVar,
-    Label,
-    Button,
-    LEFT,
-    Y,
-    BOTH,
-    END,
-    Tk,
-    Menu,
-    mainloop,
-    font,
-    Frame,
-    PhotoImage,
-    filedialog,
-    messagebox,
-)
-from project_utils import plot_graph
+import serial  # pyserial
+import serial.tools.list_ports
+
+import matplotlib
+
+matplotlib.use("Agg")  # backend for embeddable canvas
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+import openpyxl
+
+# import project metadata
+from metadata import PROJECT_METADATA, ICONS, CONSTANTS
 
 
-class MotionSensorApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title(metadata["name"])
-        self.icon = PhotoImage(file="./assets/graph.png")
-        self.root.iconphoto(True, self.icon)
-        self.root.resizable(False, False)
+# -----------------------------
+# Data acquisition (ZigBee)
+# -----------------------------
 
-        self.window_width = 800
-        self.window_height = 600
-        self.center_window(self.window_width, self.window_height)
 
-        # Create a frame to hold widgets
-        self.frame = Frame(root)
-        self.frame.pack(fill=BOTH, expand=True)
+class ZigBeeReceiver(threading.Thread):
+    """
+    Background thread that listens to a ZigBee serial port and
+    pushes motion values to a shared deque.
+    Replace the 'parse_motion_value' logic with your actual frame format.
+    """
 
-        # create the menu
-        self.menu = Menu(self.root, tearoff=0)  # tearoff=0 to disable dashed line
-        filemenu = Menu(self.menu, tearoff=0)
-        self.menu.add_cascade(label="File", menu=filemenu)
+    def __init__(self, port, baudrate, motion_buffer, use_mock_if_fail=True):
+        super().__init__(daemon=True)
+        self.port_name = port
+        self.baudrate = baudrate
+        self.motion_buffer = motion_buffer
+        self.use_mock_if_fail = use_mock_if_fail
+        self.running = False
+        self.serial = None
 
-        filemenu.add_command(label="Save", command=self.save)
-        filemenu.add_separator()
-        filemenu.add_command(label="Exit", command=root.quit)
+    def open_port(self):
+        # Try the configured port first
+        try:
+            self.serial = serial.Serial(self.port_name, self.baudrate, timeout=1)
+            print(f"Connected to ZigBee at {self.port_name}")
+            return True
+        except Exception:
+            # Auto-detect if default failed
+            ports = list(serial.tools.list_ports.comports())
+            for p in ports:
+                try:
+                    # Avoid obviously wrong ports if possible, or just try the first available
+                    self.serial = serial.Serial(p.device, self.baudrate, timeout=1)
+                    print(f"Auto-detected and connected to ZigBee at {p.device}")
+                    return True
+                except Exception:
+                    continue
 
-        helpmenu = Menu(self.menu, tearoff=0)
-        self.menu.add_cascade(label="Help", menu=helpmenu)
-        helpmenu.add_command(label="About", command=self.about)
+            self.serial = None
+            return False
 
-        self.root.config(menu=self.menu)
-        self.on_off_frame = Frame(self.frame)
-        self.main_frame = Frame(self.frame)
+    def parse_motion_value(self, raw_line):
+        """
+        Expect a simple protocol where the transmitter sends lines like:
+        'MOTION:0' or 'MOTION:1' or an integer value 0..1023.
+        """
+        try:
+            line = raw_line.strip().decode("utf-8")
+            if not line:
+                return None
+            if "MOTION:" in line:
+                _, val = line.split("MOTION:", 1)
+                return float(val.strip())
+            return float(line)
+        except Exception:
+            return None
 
-        self.label_props = {
-            "relief": "flat",
-            "compound": "top",
-            "fg": "blue",  # Text color
-            "activeforeground": "blue",
-            # "font": ("Arial", 20, "bold"),
-            "font": font.Font(
-                family="Helvetica", size=12, weight="bold", underline=True
-            ),
-        }
+    def mock_motion_value(self):
+        """
+        Simple mock generator: alternates between 0 and 1.
+        Replace with a more realistic model if desired.
+        """
+        # Example: toggling or random 0/1
+        import random
 
-        self.tab_list = [
-            {"name": "plot", "icon": PhotoImage(file="./assets/graph.png")},
-            {
-                "name": "performance",
-                "icon": PhotoImage(file="./assets/performance.png"),
-            },
-            {"name": "status", "icon": PhotoImage(file="./assets/status.png")},
-        ]
-        # dictionary to store properties monitored
-        self.properties_monitored = dict()
-        # data storage
-        self.data_storage = defaultdict(list)
+        return float(random.randint(0, 1))
 
-        # image references
-        self.light_off_img = PhotoImage(file="./assets/light_off_md.png")
-        self.light_on_img = PhotoImage(file="./assets/light_on_md.png")
-        self.power_img = PhotoImage(file="./assets/power_btn_lg.png")
-        self.power_img_sm = PhotoImage(file="./assets/power_btn.png")
+    def run(self):
+        self.running = True
 
-        # Variables
-        # allows easy access to the light status
-        self.light_status = StringVar()
-        self.light_status.set("LIGHT ON")
+        if not self.open_port() and not self.use_mock_if_fail:
+            return
 
-        self.date_time_var = StringVar()
-        self.date_time_var.set("06:12:2025 00:00:00")
+        while self.running:
+            if self.serial:
+                try:
+                    raw = self.serial.readline()
+                    value = self.parse_motion_value(raw)
+                    if value is not None:
+                        self.motion_buffer.append(value)
+                except Exception:
+                    # fall back to mock data if serial fails mid‑run
+                    if self.use_mock_if_fail:
+                        self.motion_buffer.append(self.mock_motion_value())
+            else:
+                # mock mode
+                self.motion_buffer.append(self.mock_motion_value())
 
-        self.target_property_var = StringVar()
-        self.target_property_var.set("Performance")
-        # bind the target_property_var to the handle_active_tab method, so the method is called when the variable changes
-        self.target_property_var.trace_add("write", self.handle_active_tab)
+            time.sleep(0.1)  # Faster acquisition period for responsiveness
 
-        # frames
-        self.tab_properties_frame = None
+    def stop(self):
+        self.running = False
+        try:
+            if self.serial and self.serial.is_open:
+                self.serial.close()
+        except Exception:
+            pass
 
-        # build all the screens
-        self.build_on_off_screen(self.on_off_frame)
-        self.build_main_screen(self.main_frame)
 
-        # show the on_off_screen
-        self.show_screen(self.on_off_frame)
-        # self.update_properties()
+# -----------------------------
+# Application core
+# -----------------------------
 
-        # start date_time_update
-        self.root.after(1000, self.date_time_update)  # call again in 1 second
 
-    def about(self):
-        messagebox.showinfo(
-            f"About {metadata['name']}",
-            f"{metadata['description']}\n\nVersion: {metadata['version']}\nAuthors: {', '.join(metadata['authors'])}\nLicense: {metadata['license']}\nGitHub: {metadata['github_url']}\nIssues: {metadata['issues']}",
+class MotionApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+
+        self.title(PROJECT_METADATA.get("Name"))
+        self.geometry("1024x600")  # good default for LCD; resizable
+        self.minsize(800, 480)
+        self.iconphoto(True, tk.PhotoImage(file=ICONS.get("logo")))
+
+        # shared state
+        self.system_on = False
+        self.motion_values = deque(maxlen=CONSTANTS.get("MOTION_HISTORY_LENGTH"))
+        self.motion_values.extend([0] * CONSTANTS.get("MOTION_HISTORY_LENGTH"))
+        self.measurement_history = []
+        self.current_motion_value = 0.0
+
+        # ZigBee receiver (lazy start when system is turned ON)
+        self.zigbee_thread = None
+
+        # main container for pages
+        container = ttk.Frame(self)
+        container.pack(fill="both", expand=True)
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+
+        self.container = container
+        self.pages = {}
+
+        self._create_styles()
+        self._create_menu()
+        self._create_toolbar()
+
+        # create pages
+        for PageClass in (PowerOnPage, DashboardPage, MonitoringPage, GraphsPage):
+            page = PageClass(parent=container, controller=self)
+            self.pages[PageClass.__name__] = page
+            page.grid(row=0, column=0, sticky="nsew")
+
+        # hide toolbar on landing screen
+        self.toolbar.pack_forget()
+        self.show_page("PowerOnPage")
+        self.after(CONSTANTS.get("UPDATE_INTERVAL_MS"), self._periodic_update)
+
+    # -----------------------------
+    # UI building
+    # -----------------------------
+
+    def _create_styles(self):
+        style = ttk.Style(self)
+        if sys.platform == "win32":
+            style.theme_use("clam")
+
+        style.configure(
+            "Main.TFrame",
+            background="#1e1e1e",
+        )
+        style.configure(
+            "Card.TLabelframe",
+            background="#252526",
+            foreground="#ffffff",
+        )
+        style.configure(
+            "Card.TLabelframe.Label",
+            background="#252526",
+            foreground="#ffffff",
+            font=("Segoe UI", 11, "bold"),
+        )
+        style.configure(
+            "Main.TLabel",
+            background="#1e1e1e",
+            foreground="#ffffff",
+            font=("Segoe UI", 11),
+        )
+        style.configure(
+            "Value.TLabel",
+            background="#252526",
+            foreground="#00ff9f",
+            font=("Segoe UI", 16, "bold"),
+        )
+        style.configure(
+            "Nav.TButton",
+            font=("Segoe UI", 10, "bold"),
+            padding=6,
+        )
+        style.map(
+            "Nav.TButton",
+            background=[("active", "#007acc")],
+            foreground=[("active", "#ffffff")],
         )
 
-    def save(self):
-        # Ask user where to save
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".xlsx",
-            initialfile="motion_sensor_data.xlsx",
+    def _create_menu(self):
+        menubar = tk.Menu(self)
+
+        file_menu = tk.Menu(menubar, tearoff=False)
+        help_menu = tk.Menu(menubar, tearoff=False)
+
+        file_menu.add_command(
+            label="Save Measurements", command=self.save_measurements_to_excel
+        )
+        file_menu.add_command(label="View Saved Files", command=self.view_saved_files)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.on_exit)
+
+        help_menu.add_command(label="About", command=self.show_project_info)
+
+        menubar.add_cascade(label="File", menu=file_menu)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        self.config(menu=menubar)
+
+    def _create_toolbar(self):
+        self.toolbar = ttk.Frame(self, style="Main.TFrame")
+
+        # initial geometry config; we will pack/unpack this same widget
+        self.toolbar.pack(side="top", fill="x")
+
+        self.btn_on = ttk.Button(
+            self.toolbar,
+            text="Turn ON",
+            style="Nav.TButton",
+            command=self.turn_system_on,
+        )
+        # self.btn_on.pack(side="left", padx=5, pady=5)
+
+        self.btn_off = ttk.Button(
+            self.toolbar,
+            text="Turn OFF",
+            style="Nav.TButton",
+            command=lambda: (
+                self.turn_system_off,
+                self.toolbar.pack_forget(),
+                self.show_page("PowerOnPage"),
+            ),
+        )
+        self.btn_off.pack(side="left", padx=5, pady=5)
+
+        ttk.Button(
+            self.toolbar,
+            text="Dashboard",
+            style="Nav.TButton",
+            command=lambda: self.show_page("DashboardPage"),
+        ).pack(side="right", padx=5)
+        ttk.Button(
+            self.toolbar,
+            text="Graphs",
+            style="Nav.TButton",
+            command=lambda: self.show_page("GraphsPage"),
+        ).pack(side="right", padx=5)
+        ttk.Button(
+            self.toolbar,
+            text="Monitoring",
+            style="Nav.TButton",
+            command=lambda: self.show_page("MonitoringPage"),
+        ).pack(side="right", padx=5)
+
+        # remember pack options so we can show it again later
+        self._toolbar_pack_opts = {"side": "top", "fill": "x"}
+
+    # -----------------------------
+    # Navigation and lifecycle
+    # -----------------------------
+
+    def show_page(self, name):
+        page = self.pages[name]
+        page.tkraise()
+
+    def on_exit(self):
+        if messagebox.askokcancel("Exit", "Close the HMI application?"):
+            self.turn_system_off()
+            self.destroy()
+
+    # -----------------------------
+    # System control
+    # -----------------------------
+
+    def turn_system_on(self):
+        if self.system_on:
+            return
+        self.system_on = True
+
+        # start ZigBee receiver
+        if self.zigbee_thread is None or not self.zigbee_thread.is_alive():
+            self.motion_values.clear()
+            self.motion_values.extend([0] * CONSTANTS.get("MOTION_HISTORY_LENGTH"))
+            self.measurement_history.clear()
+            self.zigbee_thread = ZigBeeReceiver(
+                port=CONSTANTS.get("DEFAULT_SERIAL_PORT"),
+                baudrate=CONSTANTS.get("DEFAULT_BAUDRATE"),
+                motion_buffer=self.motion_values,
+                use_mock_if_fail=True,  # change to False for strict serial only
+            )
+            self.zigbee_thread.start()
+
+        self.btn_on.state(["disabled"])
+        self.btn_off.state(["!disabled"])
+
+    def turn_system_off(self):
+        self.system_on = False
+        if self.zigbee_thread:
+            self.zigbee_thread.stop()
+        self.btn_on.state(["!disabled"])
+        self.btn_off.state(["disabled"])
+
+    # -----------------------------
+    # Periodic update
+    # -----------------------------
+
+    def _periodic_update(self):
+        # latest motion value
+        if self.motion_values:
+            self.current_motion_value = self.motion_values[-1]
+
+        cpu = psutil.cpu_percent(interval=None)
+        ram = psutil.virtual_memory().percent
+        disk = psutil.disk_usage("/").percent
+
+        # simple network throughput estimation (kB/s)
+        net1 = psutil.net_io_counters()
+        time.sleep(0.1)
+        net2 = psutil.net_io_counters()
+        sent_kbps = (net2.bytes_sent - net1.bytes_sent) / 1024.0 / 0.1
+        recv_kbps = (net2.bytes_recv - net1.bytes_recv) / 1024.0 / 0.1
+
+        metrics = {
+            "motion": self.current_motion_value,
+            "cpu": cpu,
+            "ram": ram,
+            "disk": disk,
+            "net_up": sent_kbps,
+            "net_down": recv_kbps,
+            "timestamp": datetime.now(),
+        }
+
+        if self.system_on:
+            self.measurement_history.append(metrics)
+
+        # propagate metrics to pages
+        for page in self.pages.values():
+            page.update_data(metrics, list(self.motion_values))
+
+        self.after(CONSTANTS.get("UPDATE_INTERVAL_MS"), self._periodic_update)
+
+    # -----------------------------
+    # Menu actions
+    # -----------------------------
+
+    def show_project_info(self):
+        msg = (
+            f"Name: {PROJECT_METADATA.get('Name')}\n"
+            f"Version: {PROJECT_METADATA.get('Version')}\n"
+            f"Authors: {', '.join(PROJECT_METADATA.get('Authors', []))}\n\n"
+            f"Description:\n{PROJECT_METADATA.get('Description')}\n\n"
+            f"License: {PROJECT_METADATA.get('License')}\n"
+            f"GitHub: {PROJECT_METADATA.get('GitHub URL')}\n"
+            f"Issues: {PROJECT_METADATA.get('Issues')}"
+        )
+        messagebox.showinfo(f"About {PROJECT_METADATA.get('Name')}", msg)
+
+    def _default_save_directory(self):
+        base = os.path.join(os.path.expanduser("~"), "motion_measurements")
+        os.makedirs(base, exist_ok=True)
+        return base
+
+    def save_measurements_to_excel(self):
+        # let user choose directory
+        target_dir = filedialog.askdirectory(
+            title="Select directory to save measurements"
+        )
+        if not target_dir:  # user cancelled
+            return
+
+        filename = datetime.now().strftime("measurements_%Y%m%d_%H%M%S.xlsx")
+        full_path = os.path.join(target_dir, filename)
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Measurements"
+
+        ws.append(
+            [
+                "Timestamp",
+                "Motion Value",
+                "CPU Usage (%)",
+                "RAM Usage (%)",
+                "Disk Usage (%)",
+                "Net Up (kB/s)",
+                "Net Down (kB/s)",
+            ]
+        )
+
+        for item in self.measurement_history:
+            ws.append(
+                [
+                    item["timestamp"].strftime("%Y-%m-%d %H:%M:%S"),
+                    item["motion"],
+                    item["cpu"],
+                    item["ram"],
+                    item["disk"],
+                    item["net_up"],
+                    item["net_down"],
+                ]
+            )
+
+        wb.save(full_path)
+        messagebox.showinfo("Save Measurements", f"Measurements saved to:\n{full_path}")
+
+    def view_saved_files(self):
+        base_dir = self._default_save_directory()
+        if not os.path.isdir(base_dir):
+            messagebox.showinfo("Saved Files", "No saved measurement directory found.")
+            return
+        # simple file chooser pointing to the directory
+        file_path = filedialog.askopenfilename(
+            title="Open saved measurement",
+            initialdir=base_dir,
             filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
         )
+
         if file_path:
             try:
-                # Convert dictionary to DataFrame
-                df = pd.DataFrame(
-                    self.data_storage,
-                )
-                # save the DataFrame to an Excel file
-                df.to_excel(file_path, index=False)
-                # save the DataFrame to a CSV file if excel is not achievable on raspberypi 1b+
-                # df.to_csv(file_path, index=False)
-                messagebox.showinfo("Success", f"Data saved to {file_path}")
+                if os.name == "nt":  # Windows
+                    os.startfile(file_path)
+                elif os.uname().sysname == "Darwin":  # macOS
+                    subprocess.call(("open", file_path))
+                else:  # Linux (including RPi OS)
+                    subprocess.call(("xdg-open", file_path))
             except Exception as e:
-                messagebox.showerror("Error", f"Could not save file:\n{e}")
+                messagebox.showerror(
+                    "Error", f"Could not open file explorer. Error: {e}"
+                )
 
-    def show_screen(self, new_frame):
-        if new_frame == self.on_off_frame:
-            self.main_frame.pack_forget()
-            self.on_off_frame.pack(fill=BOTH, expand=True)
-        elif new_frame == self.main_frame:
-            self.on_off_frame.pack_forget()
-            self.main_frame.pack(fill=BOTH, expand=True)
 
-    def get_system_usage(self):
+# -----------------------------
+# Base page
+# -----------------------------
+
+
+class BasePage(ttk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, style="Main.TFrame")
+        self.controller = controller
+
+    def update_data(self, metrics, motion_series):
         """
-        Get the system usage
-        Args:
-            None
-        Returns:
-            dict: The system usage with the format:
-                {
-                    "key": "used;total;unit",
-                    "cpu": "used;100%;%",
-                }
+        Called every second by the controller.
+        Child classes override this method.
         """
-        # CPU usage
-        cpu_percent = psutil.cpu_percent(
-            interval=0
-        )  # interval=0 for instant usage (non blocking main thread)
-        # cpu_freq = psutil.cpu_freq()
+        pass
 
-        # RAM usage
-        ram = psutil.virtual_memory()
 
-        # Disk usage (root partition)
-        disk = psutil.disk_usage("/")
+# -----------------------------
+# Dashboard Page
+# -----------------------------
 
-        return {
-            # "ram": f"{round(ram.used / (1024**3), 2)}/{round(ram.total / (1024**3), 2)}",
-            "RAM": f"{round(ram.used / (1024**3), 2)};{round(ram.total / (1024**3), 2)};GB",
-            # "Memory": f"{round(disk.used / (1024**3), 2)}/{round(disk.total / (1024**3), 2)}",
-            "DISK": f"{round(disk.used / (1024**3), 2)};{round(disk.total / (1024**3), 2)};GB",
-            "CPU": f"{cpu_percent};100;%",
-        }
 
-    def build_on_off_screen(self, frame):
-        frame = Frame(frame)
-        frame.pack(fill=BOTH, expand=True)
+class DashboardPage(BasePage):
+    def __init__(self, parent, controller):
+        super().__init__(parent, controller)
 
-        btn = Button(
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+
+        # Motion status card
+        motion_frame = ttk.Labelframe(
+            self, text="Motion Sensor", style="Card.TLabelframe"
+        )
+        motion_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
+        self.motion_value_label = ttk.Label(
+            motion_frame, text="0.0", style="Value.TLabel"
+        )
+        self.motion_value_label.pack(anchor="center", pady=10)
+
+        self.motion_state_label = ttk.Label(
+            motion_frame, text="No motion", style="Main.TLabel"
+        )
+        self.motion_state_label.pack(anchor="center", pady=5)
+
+        # System status card
+        sys_frame = ttk.Labelframe(
+            self, text="Control Station Status", style="Card.TLabelframe"
+        )
+        sys_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+
+        self.cpu_label = ttk.Label(sys_frame, text="CPU: -- %", style="Main.TLabel")
+        self.cpu_label.pack(anchor="w", padx=10, pady=2)
+
+        self.ram_label = ttk.Label(sys_frame, text="RAM: -- %", style="Main.TLabel")
+        self.ram_label.pack(anchor="w", padx=10, pady=2)
+
+        self.disk_label = ttk.Label(sys_frame, text="Disk: -- %", style="Main.TLabel")
+        self.disk_label.pack(anchor="w", padx=10, pady=2)
+
+        self.net_label = ttk.Label(
+            sys_frame, text="Net: up -- kB/s, down -- kB/s", style="Main.TLabel"
+        )
+        self.net_label.pack(anchor="w", padx=10, pady=2)
+
+        # System control state
+        control_frame = ttk.Labelframe(
+            self, text="System Control", style="Card.TLabelframe"
+        )
+        control_frame.grid(
+            row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10
+        )
+
+        self.system_state_label = ttk.Label(
+            control_frame, text="System is OFF", style="Main.TLabel"
+        )
+        self.system_state_label.pack(anchor="w", padx=10, pady=5)
+
+        info_label = ttk.Label(
+            control_frame,
+            text="Use the toolbar to turn the system ON/OFF and switch between pages.",
+            style="Main.TLabel",
+        )
+        info_label.pack(anchor="w", padx=10, pady=5)
+
+    def update_data(self, metrics, motion_series):
+        mv = metrics["motion"]
+        self.motion_value_label.config(text=f"{mv:.2f}")
+        self.motion_state_label.config(
+            text="Motion Present" if mv >= 0.5 else "Motion Absent"
+        )
+
+        self.cpu_label.config(text=f"CPU: {metrics['cpu']:.1f} %")
+        self.ram_label.config(text=f"RAM: {metrics['ram']:.1f} %")
+        self.disk_label.config(text=f"Disk: {metrics['disk']:.1f} %")
+        self.net_label.config(
+            text=f"Net: up {metrics['net_up']:.1f} kB/s, down {metrics['net_down']:.1f} kB/s"
+        )
+
+        self.system_state_label.config(
+            text="System is ON" if self.controller.system_on else "System is OFF"
+        )
+
+
+# -----------------------------
+# Monitoring Page
+# -----------------------------
+
+
+class MonitoringPage(BasePage):
+    def __init__(self, parent, controller):
+        super().__init__(parent, controller)
+
+        for i in range(2):
+            self.columnconfigure(i, weight=1)
+        for i in range(3):
+            self.rowconfigure(i, weight=1)
+
+        # Device status
+        dev_frame = ttk.Labelframe(self, text="Device Status", style="Card.TLabelframe")
+        dev_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+
+        self.lbl_tx_status = ttk.Label(
+            dev_frame, text="Transmitter: Unknown", style="Main.TLabel"
+        )
+        self.lbl_tx_status.pack(anchor="w", padx=10, pady=2)
+
+        self.lbl_rx_status = ttk.Label(
+            dev_frame, text="Control Station: Connected", style="Main.TLabel"
+        )
+        self.lbl_rx_status.pack(anchor="w", padx=10, pady=2)
+
+        # Performance cards
+        perf_frame = ttk.Labelframe(
+            self, text="Performance Metrics", style="Card.TLabelframe"
+        )
+        perf_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+
+        self.cpu_bar = ttk.Progressbar(perf_frame, maximum=100)
+        self.cpu_bar.pack(fill="x", padx=10, pady=2)
+        self.cpu_text = ttk.Label(perf_frame, text="CPU: -- %", style="Main.TLabel")
+        self.cpu_text.pack(anchor="w", padx=10, pady=2)
+
+        self.ram_bar = ttk.Progressbar(perf_frame, maximum=100)
+        self.ram_bar.pack(fill="x", padx=10, pady=2)
+        self.ram_text = ttk.Label(perf_frame, text="RAM: -- %", style="Main.TLabel")
+        self.ram_text.pack(anchor="w", padx=10, pady=2)
+
+        self.disk_bar = ttk.Progressbar(perf_frame, maximum=100)
+        self.disk_bar.pack(fill="x", padx=10, pady=2)
+        self.disk_text = ttk.Label(perf_frame, text="Disk: -- %", style="Main.TLabel")
+        self.disk_text.pack(anchor="w", padx=10, pady=2)
+
+        net_frame = ttk.Labelframe(self, text="Network", style="Card.TLabelframe")
+        net_frame.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
+
+        self.net_up_label = ttk.Label(
+            net_frame, text="Up: -- kB/s", style="Main.TLabel"
+        )
+        self.net_up_label.pack(anchor="w", padx=10, pady=2)
+
+        self.net_down_label = ttk.Label(
+            net_frame, text="Down: -- kB/s", style="Main.TLabel"
+        )
+        self.net_down_label.pack(anchor="w", padx=10, pady=2)
+
+        self.software_version_label = ttk.Label(
+            net_frame,
+            text=f"Software version: {PROJECT_METADATA.get('Version')}",
+            style="Main.TLabel",
+        )
+        self.software_version_label.pack(anchor="w", padx=10, pady=6)
+
+    def update_data(self, metrics, motion_series):
+        cpu = metrics["cpu"]
+        ram = metrics["ram"]
+        disk = metrics["disk"]
+
+        self.cpu_bar["value"] = cpu
+        self.ram_bar["value"] = ram
+        self.disk_bar["value"] = disk
+
+        self.cpu_text.config(text=f"CPU: {cpu:.1f} %")
+        self.ram_text.config(text=f"RAM: {ram:.1f} %")
+        self.disk_text.config(text=f"Disk: {disk:.1f} %")
+
+        self.net_up_label.config(text=f"Up: {metrics['net_up']:.1f} kB/s")
+        self.net_down_label.config(text=f"Down: {metrics['net_down']:.1f} kB/s")
+
+        # Simple transmitter status heuristic: if motion buffer changes, assume sending
+        if self.controller.system_on and motion_series and any(motion_series):
+            tx_status = "Transmitter: Sending data"
+        elif self.controller.system_on:
+            tx_status = "Transmitter: Connected"
+        else:
+            tx_status = "Transmitter: Off"
+
+        self.lbl_tx_status.config(text=tx_status)
+        self.lbl_rx_status.config(
+            text="Control Station: Receiving data"
+            if self.controller.system_on
+            else "Control Station: Idle"
+        )
+
+
+# -----------------------------
+# Graphs Page
+# -----------------------------
+
+
+class GraphsPage(BasePage):
+    def __init__(self, parent, controller):
+        super().__init__(parent, controller)
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        frame = ttk.Labelframe(
+            self, text="Motion Sensor History", style="Card.TLabelframe"
+        )
+        frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
+        self.figure = Figure(figsize=(5, 3), dpi=100)
+        self.ax = self.figure.add_subplot(111)
+        self.ax.set_title("Last 12 Motion Values")
+        self.ax.set_xlabel("Sample")
+        self.ax.set_ylabel("Value")
+        self.ax.set_ylim(-0.1, 1.1)
+        (self.line,) = self.ax.plot(
+            range(CONSTANTS.get("MOTION_HISTORY_LENGTH")),
+            [0] * CONSTANTS.get("MOTION_HISTORY_LENGTH"),
+            "-o",
+        )
+
+        self.canvas = FigureCanvasTkAgg(self.figure, master=frame)
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def update_data(self, metrics, motion_series):
+        if not motion_series:
+            return
+
+        y = motion_series[-CONSTANTS.get("MOTION_HISTORY_LENGTH") :]
+        x = list(range(len(y)))
+        self.line.set_xdata(x)
+        self.line.set_ydata(y)
+        self.ax.set_xlim(-0.5, max(11.5, len(y) - 0.5))
+        self.canvas.draw_idle()
+
+
+# -----------------------------
+# Power ON Page
+# -----------------------------
+
+
+class PowerOnPage(BasePage):
+    """
+    Landing screen shown at startup.
+    Contains a large Power ON button; when pressed, it turns the
+    system on and navigates to the Dashboard page.
+    """
+
+    def __init__(self, parent, controller):
+        super().__init__(parent, controller)
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        frame = ttk.Frame(self, style="Main.TFrame")
+        frame.grid(row=0, column=0, sticky="nsew", padx=40, pady=40)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+
+        title = ttk.Label(
             frame,
-            image=self.power_img,
-            command=lambda: self.show_screen(self.main_frame),
-            bd=0,
-            highlightthickness=0,
-            relief="flat",
+            text="Best Movement Measurement System",
+            style="Main.TLabel",
+            font=("Segoe UI", 18, "bold"),
+        )
+        title.pack(pady=30)
+
+        # subtitle = ttk.Label(
+        #     frame,
+        #     text="Press POWER ON to start the Control Station HMI",
+        #     style="Main.TLabel",
+        # )
+        # subtitle.pack(pady=10)
+
+        power_button = ttk.Button(
+            frame,
+            # image=tk.PhotoImage(file="./assets/power_btn_lg.png"),
             text="POWER ON",
-            bg=frame.cget("bg"),  # match parent's bg color
-            activebackground=frame.cget("bg"),
-            cursor="hand2",
             compound="top",
-            pady=15,
-            fg="blue",  # Text color
-            activeforeground="blue",
-            font=("Arial", 22, "bold"),
+            # style="Nav.TButton",
+            command=self._on_power_on_clicked,
         )
-        btn.pack(expand=True)
+        power_button.pack(pady=40, ipadx=40, ipady=20)
 
-    def build_main_screen(self, frame):
-        # Add widgets in a grid
-        left_frame = Frame(frame)
+    def _on_power_on_clicked(self):
+        self.controller.turn_system_on()
+        # show toolbar again using stored pack options
+        if getattr(self.controller, "toolbar", None):
+            self.controller.toolbar.pack(**self.controller._toolbar_pack_opts)
+        self.controller.show_page("DashboardPage")
 
-        right_frame = Frame(frame, bg="white")
 
-        # left side widgets
-        left_frame.place(relx=0, rely=0, relwidth=0.4, relheight=1)
-        # left_frame.place(relx=0, rely=0, relwidth=0.395, relheight=1)
-        right_frame.place(relx=0.4, rely=0, relwidth=0.6, relheight=1)
+# -----------------------------
+# Entry point
+# -----------------------------
 
-        left_top_frame = Frame(left_frame)
-        left_top_frame.place(relx=0, rely=0, relwidth=1, relheight=0.25)
 
-        # timer
-        time_label = Label(
-            left_top_frame,
-            textvariable=self.date_time_var,
-            font=("Arial", 12, "bold"),
-            fg="blue",  # Text color
-        )
-        time_label.pack(expand=True, fill="x")
-
-        tabs_frame = Frame(left_top_frame)
-        tabs_frame.pack(expand=True)
-
-        for index, tab in enumerate(self.tab_list):
-            _name = tab["name"].capitalize()
-            btn = Button(
-                tabs_frame,
-                text=_name,
-                image=tab["icon"],
-                relief="raised",
-                activebackground=self.frame.cget("bg"),
-                cursor="hand2",
-                compound="top",
-                command=lambda x=_name: self.target_property_var.set(x),
-                fg="blue",  # Text color
-                activeforeground="blue",
-                # bd=0,
-                # font=("Arial", 16, "normal"),
-                font=font.Font(family="Helvetica", size=12, weight="bold"),
-            )
-            btn.grid(row=1, column=index, padx=5, pady=5, sticky="nsew")
-
-            tabs_frame.grid_columnconfigure(index, weight=1, minsize=100)
-        tabs_frame.grid_rowconfigure(1, weight=1, minsize=70)
-
-        light_frame = Frame(left_frame)
-        light_frame.pack(expand=True)
-
-        bulb_label = Label(
-            light_frame,
-            image=self.light_on_img,
-            height=300,
-            textvariable=self.light_status,
-            relief="flat",
-            activebackground=self.frame.cget("bg"),
-            compound="top",
-            fg="blue",  # Text color
-            activeforeground="blue",
-            font=("Arial", 20, "bold"),
-        )
-        bulb_label.pack(expand=True)
-
-        # right side widgets
-        power_frame = Frame(right_frame, bg=right_frame.cget("bg"))
-        power_frame.place(relx=0, rely=0, relwidth=1, relheight=0.2)
-
-        power_off_btn = Button(
-            power_frame,
-            image=self.power_img_sm,
-            command=lambda: self.show_screen(self.on_off_frame),
-            relief="flat",
-            highlightthickness=0,
-            activebackground=right_frame.cget("bg"),
-            bg=right_frame.cget("bg"),
-            cursor="hand2",
-            compound="top",
-            bd=0,
-            fg="blue",  # Text color
-            activeforeground="blue",
-        )
-        power_off_btn.pack(
-            anchor="ne",
-            padx=10,
-            pady=10,
-        )
-
-        target_property_label = Label(
-            power_frame,
-            textvariable=self.target_property_var,
-            bg=right_frame.cget("bg"),
-            **self.label_props,
-        )
-        target_property_label.pack(expand=True, anchor="center")
-
-        self.tab_properties_frame = Frame(right_frame, bg=right_frame.cget("bg"))
-        self.tab_properties_frame.place(relx=0, rely=0.2, relwidth=1, relheight=0.8)
-
-        performance_frame = self.get_performance_frame(self.tab_properties_frame)
-        performance_frame.frame_id = "performance"
-        plot_frame = self.get_plot_frame(
-            self.tab_properties_frame,
-        )
-        plot_frame.frame_id = "plot"
-        status_frame = self.get_status_frame(self.tab_properties_frame)
-        status_frame.frame_id = "status"
-
-        self.handle_active_tab()
-
-    def get_performance_frame(self, parent):
-        metrics_frame = Frame(parent, bg=parent.cget("bg"))
-        metrics_frame.pack(expand=True, anchor="n")
-        # add the properties
-        system_usage = self.get_system_usage()
-        cols = 2
-        for index, (key, value) in enumerate(system_usage.items()):
-            row = index // cols
-            col = index % cols
-            property = self.create_performance_widget(metrics_frame, key, value)
-            property.grid(row=row, column=col, sticky="nsew", padx=10, pady=10)
-
-            # metrics_frame.grid_configure(row=row, column=col, weight=1)
-            metrics_frame.grid_columnconfigure(col, weight=1, minsize=150)
-            metrics_frame.grid_rowconfigure(row, weight=1, minsize=100)
-        return metrics_frame
-
-    def get_plot_frame(self, parent):
-        return plot_graph(
-            parent,
-            x_label="CPU Usage",
-            y_label="Time (Seconds)",
-            # values=self.data_storage["CPU"],
-        )
-
-    def get_status_frame(self, parent):
-        frame = Frame(parent, bg=parent.cget("bg"))
-        status_label = Label(
-            frame, text="Hello from Status", bg=parent.cget("bg"), **self.label_props
-        )
-        status_label.pack(expand=True, anchor="n")
-        return frame
-
-    def create_performance_widget(self, widget_parent, label, value):
-        """
-        Create a performance widget at runtime
-        Args:
-            label (str): The label of the performance widget
-            value (str): The value of the performance widget
-        Returns:
-            Frame: The performance widget
-            children Widget:
-                performance_label (Label): The label of the performance widget
-                performance_value (Label): The value of the performance widget
-        """
-        # create a frame at runtime
-        frame = Frame(widget_parent)
-        # Set background color to white
-        frame.configure(bd=5, relief="raised")
-        # create label and make it a child of the frame
-        performance_label = Label(frame, text=label.upper())
-        performance_label.pack(expand=True, anchor="center")
-        performance_label.configure(
-            fg="blue",  # Text color
-            font=("Arial", 10, "bold"),
-        )
-        # create performance value and make it a child of the layout
-        performance_value = Label(frame, text=str(value))
-        performance_value.pack(expand=True, fill="both", anchor="center")
-        performance_value.configure(
-            fg="green",  # Text color
-            font=("Arial", 14, "normal"),
-        )
-        # add performance value to the properties_monitored dictionary
-        self.properties_monitored[label] = performance_value
-
-        return frame
-
-    def update_properties(self):
-        """
-        Update the properties
-        Args:
-            None
-        Returns:
-            None
-        """
-        system_usage = self.get_system_usage()
-        # add time stamp to the data storage
-        self.data_storage["Timestamp"].append(time.strftime("%d-%m-%Y %H:%M:%S"))
-        for key, value in system_usage.items():
-            used, total, unit = value.split(";")
-            # update the data storage
-            self.data_storage[key].append(f"{used} {unit}")
-
-            # update the performance widget
-            performance = self.properties_monitored[key]
-            performance["text"] = f"{used} {unit}"
-            # calculate the percentage used
-            percent_used = (float(used) / float(total)) * 100
-            very_good_condition = percent_used <= 30
-            good_condition = percent_used > 30 and percent_used <= 69
-            performance.configure(
-                fg="green"
-                if very_good_condition
-                else "blue"
-                if good_condition
-                else "red"
-            )
-
-    def date_time_update(self):
-        self.date_time_var.set(time.strftime("%d-%m-%Y %H:%M:%S"))
-        self.update_properties()
-        self.root.after(1000, self.date_time_update)
-
-    def handle_active_tab(self, *args):
-        target_prop = self.target_property_var.get().lower()
-        children = self.tab_properties_frame.winfo_children()
-        for child in children:
-            if child.frame_id == target_prop:
-                child.pack(expand=True, anchor="n")
-            else:
-                child.pack_forget()
-
-    def center_window(self, width, height):
-        # self.root.update_idletasks()  # Important!
-        # Get screen dimensions
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-
-        # Calculate position
-        x = (screen_width // 2) - (width // 2)
-        y = (screen_height // 2) - (height // 2)
-
-        # Apply geometry
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
+def main():
+    app = MotionApp()
+    app.mainloop()
 
 
 if __name__ == "__main__":
-    root = Tk()
-    # create the application
-    app = MotionSensorApp(root)
-    # start the program
-    root.mainloop()
+    main()

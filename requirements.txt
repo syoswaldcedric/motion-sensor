@@ -1,4 +1,4 @@
 psutil
 openpyxl
-pandas
 matplotlib
+pyserial
