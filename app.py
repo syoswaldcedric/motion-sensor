@@ -737,7 +737,7 @@ class PowerOnPage(BasePage):
 
         title = ttk.Label(
             frame,
-            text="Best Movement Measurement System",
+            text=CONSTANTS.get("APP_TITLE"),
             style="Main.TLabel",
             font=("Segoe UI", 18, "bold"),
         )

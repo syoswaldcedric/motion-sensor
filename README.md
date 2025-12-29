@@ -14,23 +14,23 @@ It is recommended to use a virtual environment to manage dependencies.
 
     ```bash
     # Windows
-    python -m venv .venv
+    python -m venv venv
 
     # Linux/macOS
-    python3 -m venv .venv
+    python3 -m venv venv
     ```
 
 2.  **Activate the virtual environment:**
 
     ```bash
     # Windows (PowerShell)
-    .\.venv\Scripts\Activate
+    .\venv\Scripts\Activate
 
     # Windows (Command Prompt)
-    .\.venv\Scripts\activate.bat
+    .\venv\Scripts\activate.bat
 
     # Linux/macOS
-    source .venv/bin/activate
+    source venv/bin/activate
     ```
 
 3.  **Install dependencies:**
