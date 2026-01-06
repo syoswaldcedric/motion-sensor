@@ -38,9 +38,8 @@ ICONS = {"logo": "assets/graph.png"}
 CONSTANTS = {
     "UPDATE_INTERVAL_MS": 1000,  # 1 second GUI update
     "MOTION_HISTORY_LENGTH": 50,
-    "DEFAULT_SERIAL_PORT": "/dev/serial0",
-    "DEFAULT_BAUDRATE": 115200,
-    # "DEFAULT_SCREEN_SIZE": (800, 600),
+    "DEFAULT_SERIAL_PORT": "/dev/ttyAMA0",
+    "DEFAULT_BAUDRATE": 9600,
     # default screen size for LCD 3.5"
     "DEFAULT_SCREEN_SIZE": (480, 320),
     "DEVICE_VERSION": {

@@ -30,14 +30,14 @@ class MotionReceiver(threading.Thread):
         except Exception:
             # Auto-detect if default failed
             ports = list(serial.tools.list_ports.comports())
-            for p in ports:
-                try:
-                    # Avoid obviously wrong ports if possible, or just try the first available
-                    self.serial = serial.Serial(p.device, self.baudrate, timeout=1)
-                    print(f"Auto-detected and connected to ZigBee at {p.device}")
-                    return True
-                except Exception:
-                    continue
+            # for p in ports:
+            #     try:
+            #         # Avoid obviously wrong ports if possible, or just try the first available
+            #         self.serial = serial.Serial(p.device, self.baudrate, timeout=1)
+            #         print(f"Auto-detected and connected to ZigBee at {p.device}")
+            #         return True
+            #     except Exception:
+            #         continue
 
             self.serial = None
             return False
@@ -48,10 +48,12 @@ class MotionReceiver(threading.Thread):
         """
         try:
             line = raw_line.strip().decode("utf-8")
+            print(f"Received: {line}")
             if not line:
                 return None
             if "MOTION:" in line:
                 _, val = line.split("MOTION:", 1)
+                print(f"ExtractedMotion value: {val}")
                 return float(val.strip())
             return float(line)
         except Exception:
