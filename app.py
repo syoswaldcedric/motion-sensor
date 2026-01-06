@@ -23,17 +23,16 @@ import openpyxl
 # import project metadata
 from metadata import PROJECT_METADATA, ICONS, CONSTANTS
 
+from pages import DashboardPage, MonitoringPage, GraphsPage, PowerOnPage
+
 
 # -----------------------------
-# Data acquisition (ZigBee)
+# Data acquisition
 # -----------------------------
-
-
-class ZigBeeReceiver(threading.Thread):
+class MotionReceiver(threading.Thread):
     """
-    Background thread that listens to a ZigBee serial port and
+    Background thread that listens to the defined serial port and
     pushes motion values to a shared deque.
-    Replace the 'parse_motion_value' logic with your actual frame format.
     """
 
     def __init__(self, port, baudrate, motion_buffer, use_mock_if_fail=True):
@@ -68,8 +67,7 @@ class ZigBeeReceiver(threading.Thread):
 
     def parse_motion_value(self, raw_line):
         """
-        Expect a simple protocol where the transmitter sends lines like:
-        'MOTION:0' or 'MOTION:1' or an integer value 0..1023.
+        The transmitter sends lines like: 'MOTION:0' or 'MOTION:1'
         """
         try:
             line = raw_line.strip().decode("utf-8")
@@ -84,12 +82,11 @@ class ZigBeeReceiver(threading.Thread):
 
     def mock_motion_value(self):
         """
-        Simple mock generator: alternates between 0 and 1.
-        Replace with a more realistic model if desired.
+        Simple motion value mock generator for testing: alternates between 0 and 1.
         """
-        # Example: toggling or random 0/1
         import random
 
+        # toggling or random 0/1
         return float(random.randint(0, 1))
 
     def run(self):
@@ -127,8 +124,6 @@ class ZigBeeReceiver(threading.Thread):
 # -----------------------------
 # Application core
 # -----------------------------
-
-
 class MotionApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -313,7 +308,7 @@ class MotionApp(tk.Tk):
             self.motion_values.clear()
             self.motion_values.extend([0] * CONSTANTS.get("MOTION_HISTORY_LENGTH"))
             self.measurement_history.clear()
-            self.zigbee_thread = ZigBeeReceiver(
+            self.zigbee_thread = MotionReceiver(
                 port=CONSTANTS.get("DEFAULT_SERIAL_PORT"),
                 baudrate=CONSTANTS.get("DEFAULT_BAUDRATE"),
                 motion_buffer=self.motion_values,
@@ -401,11 +396,12 @@ class MotionApp(tk.Tk):
 
         filename = datetime.now().strftime("measurements_%Y%m%d_%H%M%S.xlsx")
         full_path = os.path.join(target_dir, filename)
-
+        # instantiate workbook
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Measurements"
 
+        # write headers / column labels
         ws.append(
             [
                 "Timestamp",
@@ -418,6 +414,7 @@ class MotionApp(tk.Tk):
             ]
         )
 
+        # write data rows
         for item in self.measurement_history:
             ws.append(
                 [
@@ -461,318 +458,8 @@ class MotionApp(tk.Tk):
 
 
 # -----------------------------
-# Base page
-# -----------------------------
-
-
-class BasePage(ttk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent, style="Main.TFrame")
-        self.controller = controller
-
-    def update_data(self, metrics, motion_series):
-        """
-        Called every second by the controller.
-        Child classes override this method.
-        """
-        pass
-
-
-# -----------------------------
-# Dashboard Page
-# -----------------------------
-
-
-class DashboardPage(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=1)
-        self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
-
-        # Motion status card
-        motion_frame = ttk.Labelframe(
-            self, text="Motion Sensor", style="Card.TLabelframe"
-        )
-        motion_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-
-        self.motion_value_label = ttk.Label(
-            motion_frame, text="0.0", style="Value.TLabel"
-        )
-        self.motion_value_label.pack(anchor="center", pady=10)
-
-        self.motion_state_label = ttk.Label(
-            motion_frame, text="No motion", style="Main.TLabel"
-        )
-        self.motion_state_label.pack(anchor="center", pady=5)
-
-        # System status card
-        sys_frame = ttk.Labelframe(
-            self, text="Control Station Status", style="Card.TLabelframe"
-        )
-        sys_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
-
-        self.cpu_label = ttk.Label(sys_frame, text="CPU: -- %", style="Main.TLabel")
-        self.cpu_label.pack(anchor="w", padx=10, pady=2)
-
-        self.ram_label = ttk.Label(sys_frame, text="RAM: -- %", style="Main.TLabel")
-        self.ram_label.pack(anchor="w", padx=10, pady=2)
-
-        self.disk_label = ttk.Label(sys_frame, text="Disk: -- %", style="Main.TLabel")
-        self.disk_label.pack(anchor="w", padx=10, pady=2)
-
-        self.net_label = ttk.Label(
-            sys_frame, text="Net: up -- kB/s, down -- kB/s", style="Main.TLabel"
-        )
-        self.net_label.pack(anchor="w", padx=10, pady=2)
-
-        # System control state
-        control_frame = ttk.Labelframe(
-            self, text="System Control", style="Card.TLabelframe"
-        )
-        control_frame.grid(
-            row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10
-        )
-
-        self.system_state_label = ttk.Label(
-            control_frame, text="System is OFF", style="Main.TLabel"
-        )
-        self.system_state_label.pack(anchor="w", padx=10, pady=5)
-
-        info_label = ttk.Label(
-            control_frame,
-            text="Use the toolbar to turn the system ON/OFF and switch between pages.",
-            style="Main.TLabel",
-        )
-        info_label.pack(anchor="w", padx=10, pady=5)
-
-    def update_data(self, metrics, motion_series):
-        mv = metrics["motion"]
-        self.motion_value_label.config(text=f"{mv:.2f}")
-        self.motion_state_label.config(
-            text="Motion Present" if mv >= 0.5 else "Motion Absent"
-        )
-
-        self.cpu_label.config(text=f"CPU: {metrics['cpu']:.1f} %")
-        self.ram_label.config(text=f"RAM: {metrics['ram']:.1f} %")
-        self.disk_label.config(text=f"Disk: {metrics['disk']:.1f} %")
-        self.net_label.config(
-            text=f"Net: up {metrics['net_up']:.1f} kB/s, down {metrics['net_down']:.1f} kB/s"
-        )
-
-        self.system_state_label.config(
-            text="System is ON" if self.controller.system_on else "System is OFF"
-        )
-
-
-# -----------------------------
-# Monitoring Page
-# -----------------------------
-
-
-class MonitoringPage(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-
-        for i in range(2):
-            self.columnconfigure(i, weight=1)
-        for i in range(3):
-            self.rowconfigure(i, weight=1)
-
-        # Device status
-        dev_frame = ttk.Labelframe(self, text="Device Status", style="Card.TLabelframe")
-        dev_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
-
-        self.lbl_tx_status = ttk.Label(
-            dev_frame, text="Transmitter: Unknown", style="Main.TLabel"
-        )
-        self.lbl_tx_status.pack(anchor="w", padx=10, pady=2)
-
-        self.lbl_rx_status = ttk.Label(
-            dev_frame, text="Control Station: Connected", style="Main.TLabel"
-        )
-        self.lbl_rx_status.pack(anchor="w", padx=10, pady=2)
-
-        # Performance cards
-        perf_frame = ttk.Labelframe(
-            self, text="Performance Metrics", style="Card.TLabelframe"
-        )
-        perf_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-
-        self.cpu_bar = ttk.Progressbar(perf_frame, maximum=100)
-        self.cpu_bar.pack(fill="x", padx=10, pady=2)
-        self.cpu_text = ttk.Label(perf_frame, text="CPU: -- %", style="Main.TLabel")
-        self.cpu_text.pack(anchor="w", padx=10, pady=2)
-
-        self.ram_bar = ttk.Progressbar(perf_frame, maximum=100)
-        self.ram_bar.pack(fill="x", padx=10, pady=2)
-        self.ram_text = ttk.Label(perf_frame, text="RAM: -- %", style="Main.TLabel")
-        self.ram_text.pack(anchor="w", padx=10, pady=2)
-
-        self.disk_bar = ttk.Progressbar(perf_frame, maximum=100)
-        self.disk_bar.pack(fill="x", padx=10, pady=2)
-        self.disk_text = ttk.Label(perf_frame, text="Disk: -- %", style="Main.TLabel")
-        self.disk_text.pack(anchor="w", padx=10, pady=2)
-
-        net_frame = ttk.Labelframe(self, text="Network", style="Card.TLabelframe")
-        net_frame.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
-
-        self.net_up_label = ttk.Label(
-            net_frame, text="Up: -- kB/s", style="Main.TLabel"
-        )
-        self.net_up_label.pack(anchor="w", padx=10, pady=2)
-
-        self.net_down_label = ttk.Label(
-            net_frame, text="Down: -- kB/s", style="Main.TLabel"
-        )
-        self.net_down_label.pack(anchor="w", padx=10, pady=2)
-
-        self.software_version_label = ttk.Label(
-            net_frame,
-            text=f"Software version: {PROJECT_METADATA.get('Version')}",
-            style="Main.TLabel",
-        )
-        self.software_version_label.pack(anchor="w", padx=10, pady=6)
-
-    def update_data(self, metrics, motion_series):
-        cpu = metrics["cpu"]
-        ram = metrics["ram"]
-        disk = metrics["disk"]
-
-        self.cpu_bar["value"] = cpu
-        self.ram_bar["value"] = ram
-        self.disk_bar["value"] = disk
-
-        self.cpu_text.config(text=f"CPU: {cpu:.1f} %")
-        self.ram_text.config(text=f"RAM: {ram:.1f} %")
-        self.disk_text.config(text=f"Disk: {disk:.1f} %")
-
-        self.net_up_label.config(text=f"Up: {metrics['net_up']:.1f} kB/s")
-        self.net_down_label.config(text=f"Down: {metrics['net_down']:.1f} kB/s")
-
-        # Simple transmitter status heuristic: if motion buffer changes, assume sending
-        if self.controller.system_on and motion_series and any(motion_series):
-            tx_status = "Transmitter: Sending data"
-        elif self.controller.system_on:
-            tx_status = "Transmitter: Connected"
-        else:
-            tx_status = "Transmitter: Off"
-
-        self.lbl_tx_status.config(text=tx_status)
-        self.lbl_rx_status.config(
-            text="Control Station: Receiving data"
-            if self.controller.system_on
-            else "Control Station: Idle"
-        )
-
-
-# -----------------------------
-# Graphs Page
-# -----------------------------
-
-
-class GraphsPage(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-
-        frame = ttk.Labelframe(
-            self, text="Motion Sensor History", style="Card.TLabelframe"
-        )
-        frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-
-        self.figure = Figure(figsize=(5, 3), dpi=100)
-        self.ax = self.figure.add_subplot(111)
-        self.ax.set_title("Last 12 Motion Values")
-        self.ax.set_xlabel("Sample")
-        self.ax.set_ylabel("Value")
-        self.ax.set_ylim(-0.1, 1.1)
-        (self.line,) = self.ax.plot(
-            range(CONSTANTS.get("MOTION_HISTORY_LENGTH")),
-            [0] * CONSTANTS.get("MOTION_HISTORY_LENGTH"),
-            "-o",
-        )
-
-        self.canvas = FigureCanvasTkAgg(self.figure, master=frame)
-        self.canvas.get_tk_widget().pack(fill="both", expand=True)
-
-    def update_data(self, metrics, motion_series):
-        if not motion_series:
-            return
-
-        y = motion_series[-CONSTANTS.get("MOTION_HISTORY_LENGTH") :]
-        x = list(range(len(y)))
-        self.line.set_xdata(x)
-        self.line.set_ydata(y)
-        self.ax.set_xlim(-0.5, max(11.5, len(y) - 0.5))
-        self.canvas.draw_idle()
-
-
-# -----------------------------
-# Power ON Page
-# -----------------------------
-
-
-class PowerOnPage(BasePage):
-    """
-    Landing screen shown at startup.
-    Contains a large Power ON button; when pressed, it turns the
-    system on and navigates to the Dashboard page.
-    """
-
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-
-        frame = ttk.Frame(self, style="Main.TFrame")
-        frame.grid(row=0, column=0, sticky="nsew", padx=40, pady=40)
-        frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(0, weight=1)
-
-        title = ttk.Label(
-            frame,
-            text=CONSTANTS.get("APP_TITLE"),
-            style="Main.TLabel",
-            font=("Segoe UI", 18, "bold"),
-        )
-        title.pack(pady=30)
-
-        # subtitle = ttk.Label(
-        #     frame,
-        #     text="Press POWER ON to start the Control Station HMI",
-        #     style="Main.TLabel",
-        # )
-        # subtitle.pack(pady=10)
-
-        power_button = ttk.Button(
-            frame,
-            # image=tk.PhotoImage(file="./assets/power_btn_lg.png"),
-            text="POWER ON",
-            compound="top",
-            # style="Nav.TButton",
-            command=self._on_power_on_clicked,
-        )
-        power_button.pack(pady=40, ipadx=40, ipady=20)
-
-    def _on_power_on_clicked(self):
-        self.controller.turn_system_on()
-        # show toolbar again using stored pack options
-        if getattr(self.controller, "toolbar", None):
-            self.controller.toolbar.pack(**self.controller._toolbar_pack_opts)
-        self.controller.show_page("DashboardPage")
-
-
-# -----------------------------
 # Entry point
 # -----------------------------
-
-
 def main():
     app = MotionApp()
     app.mainloop()

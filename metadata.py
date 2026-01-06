@@ -51,7 +51,7 @@ ICONS = {"logo": "assets/graph.png"}
 # -----------------------------
 CONSTANTS = {
     "UPDATE_INTERVAL_MS": 1000,  # 1 second GUI update
-    "MOTION_HISTORY_LENGTH": 12,
+    "MOTION_HISTORY_LENGTH": 50,
     "DEFAULT_SERIAL_PORT": "/dev/serial0",
     "DEFAULT_BAUDRATE": 115200,
 }
