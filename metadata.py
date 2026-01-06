@@ -1,5 +1,5 @@
 PROJECT_METADATA = {
-    "Name": "Human Movement Measurement HMI",
+    "Name": "Human Movement Measurement",
     "Version": "1.0.0",
     "Authors": ["Oswald Syndric", "Anh Tuan", "Ego Victor"],
     "Description": "A multi-page Tkinter GUI for monitoring a Raspberry Pi/ZigBee-based motion detection system. Designed for industrial-grade HMI.",
@@ -43,4 +43,8 @@ CONSTANTS = {
     # "DEFAULT_SCREEN_SIZE": (800, 600),
     # default screen size for LCD 3.5"
     "DEFAULT_SCREEN_SIZE": (480, 320),
+    "DEVICE_VERSION": {
+        "transmitter": "Raspberypi 1b+ v1.2",
+        "control_station": "Raspberypi 1b+ v1.2",
+    },
 }

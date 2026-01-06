@@ -166,7 +166,6 @@ class MonitoringPage(BasePage):
         self.net_up_label.config(text=f"Up: {metrics['net_up']:.1f} kB/s")
         self.net_down_label.config(text=f"Down: {metrics['net_down']:.1f} kB/s")
 
-        # Simple transmitter status heuristic: if motion buffer changes, assume sending
         if self.controller.system_on and motion_series and any(motion_series):
             tx_status = "Transmitter: Sending data"
         elif self.controller.system_on:

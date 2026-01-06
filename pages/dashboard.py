@@ -2,6 +2,9 @@ import tkinter as tk
 from .base_page import BasePage
 from tkinter import PhotoImage
 
+# import project metadata
+from metadata import CONSTANTS
+
 
 # -----------------------------
 # Dashboard Page
@@ -11,20 +14,19 @@ class DashboardPage(BasePage):
         super().__init__(parent, controller)
 
         self.last_metrics = None
-        self.selected_station = "control"
+        self.selected_station = "control_station"
 
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
 
-        self.light_on_img = PhotoImage(file="./assets/light_on.png")
-        self.light_off_img = PhotoImage(file="./assets/light_off.png")
+        self.light_on_img = PhotoImage(file="./assets/light_on_resized.png")
+        self.light_off_img = PhotoImage(file="./assets/light_off_resized.png")
 
         self.motion_state_var = tk.StringVar()
         self.motion_state_var.set("Motion Absent")
 
-        # Motion status card
         # Motion status card
         motion_frame = tk.LabelFrame(
             self,
@@ -32,13 +34,7 @@ class DashboardPage(BasePage):
             bg="#252526",
             fg="#ffffff",
             font=("Segoe UI", 11, "bold"),
-            # image=PhotoImage(file="./assets/graph.png"), # Labelframe doesn't support image directly like this usually in tk
         )
-        # Note: tk.LabelFrame doesn't usually take 'image' as a background easily,
-        # or maybe the user meant an icon? 'ttk.Labelframe' doesn't support image usually either?
-        # Checking docs: ttk.LabelFrame 'labelwidget' option or standard options.
-        # The original code passed 'image=' which might be ignored or used if valid.
-        # I will remove image for now to prevent errors if tk.LabelFrame doesn't support it.
         motion_frame = tk.LabelFrame(
             self,
             text="Motion Sensor",
@@ -70,7 +66,6 @@ class DashboardPage(BasePage):
         self.motion_state_label.pack(anchor="center", pady=5)
 
         # System status card
-        # System status card
         self.sys_frame = tk.Frame(
             self,
             bg="#252526",
@@ -78,9 +73,8 @@ class DashboardPage(BasePage):
         self.sys_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
         # Station selection buttons
-        # Station selection buttons
         btn_frame = tk.Frame(self.sys_frame, bg="#1e1e1e")
-        btn_frame.pack(fill="x", padx=10, pady=5)
+        btn_frame.pack(fill="x", padx=10, pady=3)
 
         self.btn_control = tk.Button(
             btn_frame,
@@ -90,7 +84,7 @@ class DashboardPage(BasePage):
             fg="#ffffff",
             activebackground="#007acc",
             activeforeground="#ffffff",
-            command=lambda: self.set_station("control"),
+            command=lambda: self.set_station("control_station"),
         )
         self.btn_control.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
@@ -124,6 +118,15 @@ class DashboardPage(BasePage):
         )
         self.ram_label.pack(anchor="w", padx=10, pady=2)
 
+        self.device_label = tk.Label(
+            self.sys_frame,
+            text="Device: --",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11),
+        )
+        self.device_label.pack(anchor="w", padx=10, pady=2)
+
         self.disk_label = tk.Label(
             self.sys_frame,
             text="Disk: -- %",
@@ -142,8 +145,7 @@ class DashboardPage(BasePage):
         )
         self.net_label.pack(anchor="w", padx=10, pady=2)
 
-        # System control state
-        # System control state
+        # System control frame
         control_frame = tk.LabelFrame(
             self,
             text="System Control",
@@ -152,7 +154,7 @@ class DashboardPage(BasePage):
             font=("Segoe UI", 11, "bold"),
         )
         control_frame.grid(
-            row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10
+            row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=5
         )
 
         self.system_state_label = tk.Label(
@@ -162,16 +164,16 @@ class DashboardPage(BasePage):
             fg="#ffffff",
             font=("Segoe UI", 11),
         )
-        self.system_state_label.pack(anchor="w", padx=10, pady=5)
+        self.system_state_label.pack(anchor="w", padx=10, pady=3)
 
         info_label = tk.Label(
             control_frame,
             text="Use the toolbar to turn the system ON/OFF and switch between pages.",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
         )
-        info_label.pack(anchor="w", padx=10, pady=5)
+        info_label.pack(anchor="w", padx=10, pady=3)
 
         # Initial button state
         self.set_station(self.selected_station)
@@ -194,7 +196,7 @@ class DashboardPage(BasePage):
     def set_station(self, station):
         self.selected_station = station
         # Update button styles
-        if station == "control":
+        if station == "control_station":
             self.btn_control.config(bg="#007acc", fg="#ffffff")
             self.btn_transmitter.config(bg="#333333", fg="#ffffff")
         else:
@@ -213,7 +215,6 @@ class DashboardPage(BasePage):
         if self.selected_station == "transmitter":
             # Use mock transmitter data
             data = ms.get("transmitter", {})
-            title = "Transmitter Metrics"
             # Ensure safe fallback if data missing
             cpu = data.get("cpu", 0.0)
             ram = data.get("ram", 0.0)
@@ -222,18 +223,18 @@ class DashboardPage(BasePage):
             net_down = data.get("net_down", 0.0)
         else:
             # Default control station
-            title = "Control Station Metrics"
             cpu = ms.get("cpu", 0.0)
             ram = ms.get("ram", 0.0)
             disk = ms.get("disk", 0.0)
             net_up = ms.get("net_up", 0.0)
             net_down = ms.get("net_down", 0.0)
 
-        # self.sys_frame.config(text=title)
-
         self.cpu_label.config(text=f"CPU: {cpu:.1f} %")
         self.ram_label.config(text=f"RAM: {ram:.1f} %")
         self.disk_label.config(text=f"Disk: {disk:.1f} %")
+        self.device_label.config(
+            text=f"Device: {CONSTANTS.get('DEVICE_VERSION').get(self.selected_station.lower())}"
+        )
         self.net_label.config(
             text=f"Net: up {net_up:.1f} kB/s, down {net_down:.1f} kB/s"
         )

@@ -2,7 +2,7 @@ import tkinter as tk
 from .base_page import BasePage
 
 # import project metadata
-from metadata import CONSTANTS
+from metadata import CONSTANTS, PROJECT_METADATA
 
 
 # -----------------------------
@@ -26,23 +26,16 @@ class PowerOnPage(BasePage):
         frame = tk.Frame(self, bg="#1e1e1e")
         frame.grid(row=0, column=0, sticky="nsew", padx=40, pady=40)
         frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(0, weight=1)
 
         title = tk.Label(
             frame,
-            text=CONSTANTS.get("APP_TITLE"),
+            text=PROJECT_METADATA.get("Name", "Motion Sensor HMI"),
             bg="#1e1e1e",
             fg="#ffffff",
-            font=("Segoe UI", 18, "bold"),
+            font=("Segoe UI", 16, "bold"),
+            justify="center",
         )
-        title.pack(pady=30)
-
-        # subtitle = ttk.Label(
-        #     frame,
-        #     text="Press POWER ON to start the Control Station HMI",
-        #     style="Main.TLabel",
-        # )
-        # subtitle.pack(pady=10)
+        title.pack(pady=30, anchor="center")
 
         power_button = tk.Button(
             frame,

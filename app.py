@@ -1,7 +1,6 @@
 import os
-import sys
 import time
-import threading
+
 from collections import deque
 from datetime import datetime
 import tkinter as tk
@@ -9,112 +8,17 @@ from tkinter import filedialog, messagebox
 import subprocess
 
 import psutil
-import serial  # pyserial
-import serial.tools.list_ports
 import random
 
-
 import openpyxl
+
+
+from project_utils import MotionReceiver
 
 # import project metadata
 from metadata import PROJECT_METADATA, ICONS, CONSTANTS
 
 from pages import DashboardPage, MonitoringPage, GraphsPage, PowerOnPage
-
-
-# -----------------------------
-# Data acquisition
-# -----------------------------
-class MotionReceiver(threading.Thread):
-    """
-    Background thread that listens to the defined serial port and
-    pushes motion values to a shared deque.
-    """
-
-    def __init__(self, port, baudrate, motion_buffer, use_mock_if_fail=True):
-        super().__init__(daemon=True)
-        self.port_name = port
-        self.baudrate = baudrate
-        self.motion_buffer = motion_buffer
-        self.use_mock_if_fail = use_mock_if_fail
-        self.running = False
-        self.serial = None
-
-    def open_port(self):
-        # Try the configured port first
-        try:
-            self.serial = serial.Serial(self.port_name, self.baudrate, timeout=1)
-            print(f"Connected to ZigBee at {self.port_name}")
-            return True
-        except Exception:
-            # Auto-detect if default failed
-            ports = list(serial.tools.list_ports.comports())
-            for p in ports:
-                try:
-                    # Avoid obviously wrong ports if possible, or just try the first available
-                    self.serial = serial.Serial(p.device, self.baudrate, timeout=1)
-                    print(f"Auto-detected and connected to ZigBee at {p.device}")
-                    return True
-                except Exception:
-                    continue
-
-            self.serial = None
-            return False
-
-    def parse_motion_value(self, raw_line):
-        """
-        The transmitter sends lines like: 'MOTION:0' or 'MOTION:1'
-        """
-        try:
-            line = raw_line.strip().decode("utf-8")
-            if not line:
-                return None
-            if "MOTION:" in line:
-                _, val = line.split("MOTION:", 1)
-                return float(val.strip())
-            return float(line)
-        except Exception:
-            return None
-
-    def mock_motion_value(self):
-        """
-        Simple motion value mock generator for testing: alternates between 0 and 1.
-        """
-        import random
-
-        # toggling or random 0/1
-        return float(random.randint(0, 1))
-
-    def run(self):
-        self.running = True
-
-        if not self.open_port() and not self.use_mock_if_fail:
-            return
-
-        while self.running:
-            if self.serial:
-                try:
-                    raw = self.serial.readline()
-                    value = self.parse_motion_value(raw)
-                    if value is not None:
-                        self.motion_buffer.append(value)
-                except Exception:
-                    # fall back to mock data if serial fails mid‑run
-                    if self.use_mock_if_fail:
-                        self.motion_buffer.append(self.mock_motion_value())
-            else:
-                # mock mode
-                self.motion_buffer.append(self.mock_motion_value())
-
-            time.sleep(0.1)  # Faster acquisition period for responsiveness
-
-    def stop(self):
-        self.running = False
-        try:
-            if self.serial and self.serial.is_open:
-                self.serial.close()
-        except Exception:
-            pass
 
 
 # -----------------------------
@@ -141,21 +45,64 @@ class MotionApp(tk.Tk):
         self.measurement_history = []
         self.current_motion_value = 0.0
 
-        # ZigBee receiver (lazy start when system is turned ON)
-        self.zigbee_thread = None
+        # Motion receiver (lazy start when system is turned ON)
+        self.background_thread = None
 
-        # main container for pages
-        container = tk.Frame(self, bg="#1e1e1e")
-        container.pack(fill="both", expand=True)
+        self.nav_buttons = {}
+
+        # -----------------------------
+        # Scrollable Main Layout
+        # -----------------------------
+        # 1. Main layout frame (holds toolbar + canvas area)
+        main_layout = tk.Frame(self, bg="#1e1e1e")
+        main_layout.pack(fill="both", expand=True)
+
+        self._create_menu()
+
+        # 2. Toolbar fixed at the top of the main layout
+        self.toolbar_container = tk.Frame(main_layout, bg="#1e1e1e")
+        self.toolbar_container.pack(side="top", fill="x")
+        self._create_toolbar()
+
+        # 3. Canvas and Scrollbar setup
+        self.canvas = tk.Canvas(main_layout, bg="#1e1e1e", highlightthickness=0)
+        self.scrollbar = tk.Scrollbar(
+            main_layout, orient="vertical", command=self.canvas.yview
+        )
+
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        # 4. Inner container for pages
+        container = tk.Frame(self.canvas, bg="#1e1e1e")
+
+        # Grid config for the pages inside the container
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
+        # Create window inside canvas
+        self.canvas_frame = self.canvas.create_window(
+            (0, 0), window=container, anchor="nw"
+        )
+
+        # 5. Bindings for responsiveness
+
+        # When container changes size (widgets added/removed), update scrollregion
+        def on_frame_configure(event):
+            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+        container.bind("<Configure>", on_frame_configure)
+
+        # When canvas changes size (window resized), force container width to match
+        def on_canvas_configure(event):
+            self.canvas.itemconfig(self.canvas_frame, width=event.width)
+
+        self.canvas.bind("<Configure>", on_canvas_configure)
+
         self.container = container
         self.pages = {}
-
-        # self._create_styles()
-        self._create_menu()
-        self._create_toolbar()
 
         # create pages
         for PageClass in (PowerOnPage, DashboardPage, MonitoringPage, GraphsPage):
@@ -167,53 +114,6 @@ class MotionApp(tk.Tk):
         self.toolbar.pack_forget()
         self.show_page("PowerOnPage")
         self.after(CONSTANTS.get("UPDATE_INTERVAL_MS"), self._periodic_update)
-
-    # -----------------------------
-    # UI building
-    # -----------------------------
-
-    # def _create_styles(self):
-    #     style = ttk.Style(self)
-    #     if sys.platform == "win32":
-    #         style.theme_use("clam")
-    #
-    #     style.configure(
-    #         "Main.TFrame",
-    #         background="#1e1e1e",
-    #     )
-    #     style.configure(
-    #         "Card.TLabelframe",
-    #         background="#252526",
-    #         foreground="#ffffff",
-    #     )
-    #     style.configure(
-    #         "Card.TLabelframe.Label",
-    #         background="#252526",
-    #         foreground="#ffffff",
-    #         font=("Segoe UI", 11, "bold"),
-    #     )
-    #     style.configure(
-    #         "Main.TLabel",
-    #         background="#1e1e1e",
-    #         foreground="#ffffff",
-    #         font=("Segoe UI", 11),
-    #     )
-    #     style.configure(
-    #         "Value.TLabel",
-    #         background="#252526",
-    #         foreground="#00ff9f",
-    #         font=("Segoe UI", 16, "bold"),
-    #     )
-    #     style.configure(
-    #         "Nav.TButton",
-    #         font=("Segoe UI", 10, "bold"),
-    #         padding=6,
-    #     )
-    #     style.map(
-    #         "Nav.TButton",
-    #         background=[("active", "#007acc")],
-    #         foreground=[("active", "#ffffff")],
-    #     )
 
     def _create_menu(self):
         menubar = tk.Menu(self)
@@ -268,7 +168,7 @@ class MotionApp(tk.Tk):
         )
         self.btn_off.pack(side="left", padx=5, pady=5)
 
-        tk.Button(
+        self.nav_buttons["DashboardPage"] = tk.Button(
             self.toolbar,
             text="Dashboard",
             font=("Segoe UI", 10, "bold"),
@@ -277,8 +177,10 @@ class MotionApp(tk.Tk):
             activebackground="#007acc",
             activeforeground="#ffffff",
             command=lambda: self.show_page("DashboardPage"),
-        ).pack(side="right", padx=5)
-        tk.Button(
+        )
+        self.nav_buttons["DashboardPage"].pack(side="right", padx=5)
+
+        self.nav_buttons["GraphsPage"] = tk.Button(
             self.toolbar,
             text="Graphs",
             font=("Segoe UI", 10, "bold"),
@@ -287,8 +189,10 @@ class MotionApp(tk.Tk):
             activebackground="#007acc",
             activeforeground="#ffffff",
             command=lambda: self.show_page("GraphsPage"),
-        ).pack(side="right", padx=5)
-        tk.Button(
+        )
+        self.nav_buttons["GraphsPage"].pack(side="right", padx=5)
+
+        self.nav_buttons["MonitoringPage"] = tk.Button(
             self.toolbar,
             text="Monitoring",
             font=("Segoe UI", 10, "bold"),
@@ -297,7 +201,8 @@ class MotionApp(tk.Tk):
             activebackground="#007acc",
             activeforeground="#ffffff",
             command=lambda: self.show_page("MonitoringPage"),
-        ).pack(side="right", padx=5)
+        )
+        self.nav_buttons["MonitoringPage"].pack(side="right", padx=5)
 
         # remember pack options so we can show it again later
         self._toolbar_pack_opts = {"side": "top", "fill": "x"}
@@ -307,6 +212,13 @@ class MotionApp(tk.Tk):
     # -----------------------------
 
     def show_page(self, name):
+        # Update button styles for navigation
+        for page_name, btn in self.nav_buttons.items():
+            if page_name == name:
+                btn.config(bg="#007acc")
+            else:
+                btn.config(bg="#333333")
+
         page = self.pages[name]
         page.tkraise()
 
@@ -324,26 +236,26 @@ class MotionApp(tk.Tk):
             return
         self.system_on = True
 
-        # start ZigBee receiver
-        if self.zigbee_thread is None or not self.zigbee_thread.is_alive():
+        # start Motion receiver thread
+        if self.background_thread is None or not self.background_thread.is_alive():
             self.motion_values.clear()
             self.motion_values.extend([0] * CONSTANTS.get("MOTION_HISTORY_LENGTH"))
             self.measurement_history.clear()
-            self.zigbee_thread = MotionReceiver(
+            self.background_thread = MotionReceiver(
                 port=CONSTANTS.get("DEFAULT_SERIAL_PORT"),
                 baudrate=CONSTANTS.get("DEFAULT_BAUDRATE"),
                 motion_buffer=self.motion_values,
                 use_mock_if_fail=True,  # change to False for strict serial only
             )
-            self.zigbee_thread.start()
+            self.background_thread.start()
 
         self.btn_on.config(state="disabled")
         self.btn_off.config(state="normal")
 
     def turn_system_off(self):
         self.system_on = False
-        if self.zigbee_thread:
-            self.zigbee_thread.stop()
+        if self.background_thread:
+            self.background_thread.stop()
         self.btn_on.config(state="normal")
         self.btn_off.config(state="disabled")
 
@@ -375,12 +287,14 @@ class MotionApp(tk.Tk):
             "net_up": sent_kbps,
             "net_down": recv_kbps,
             "timestamp": datetime.now(),
+            "version": CONSTANTS.get("DEVICE_VERSION"),
             "transmitter": {
                 "cpu": random.uniform(10, 40),
                 "ram": random.uniform(20, 50),
                 "disk": 45.0 + random.uniform(-0.5, 0.5),
                 "net_up": random.uniform(0, 50),
                 "net_down": random.uniform(0, 50),
+                "version": CONSTANTS.get("DEVICE_VERSION"),
             },
         }
 

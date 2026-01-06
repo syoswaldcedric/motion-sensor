@@ -32,7 +32,10 @@ class GraphsPage(BasePage):
 
         self.figure = Figure(figsize=(5, 3), dpi=100)
         self.ax = self.figure.add_subplot(111)
-        self.ax.set_title("Last 12 Motion Values")
+        self.ax.set_title(
+            f"Last {CONSTANTS.get('MOTION_HISTORY_LENGTH')} Motion Values",
+            fontdict={"fontsize": 8},
+        )
         self.ax.set_xlabel("Sample")
         self.ax.set_ylabel("Value")
         self.ax.set_ylim(-0.1, 1.1)
@@ -41,6 +44,7 @@ class GraphsPage(BasePage):
             [0] * CONSTANTS.get("MOTION_HISTORY_LENGTH"),
             "-o",
         )
+        self.figure.tight_layout()
 
         self.canvas = FigureCanvasTkAgg(self.figure, master=frame)
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
