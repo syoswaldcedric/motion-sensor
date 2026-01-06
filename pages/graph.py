@@ -1,4 +1,4 @@
-from tkinter import ttk
+import tkinter as tk
 from .base_page import BasePage
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -21,8 +21,12 @@ class GraphsPage(BasePage):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        frame = ttk.Labelframe(
-            self, text="Motion Sensor History", style="Card.TLabelframe"
+        frame = tk.LabelFrame(
+            self,
+            text="Motion Sensor History",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11, "bold"),
         )
         frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 

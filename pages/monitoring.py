@@ -1,8 +1,34 @@
-from tkinter import ttk
+import tkinter as tk
 from .base_page import BasePage
 
 # import project metadata
 from metadata import PROJECT_METADATA
+
+
+class SimpleProgressBar(tk.Canvas):
+    def __init__(
+        self, parent, maximum=100, bg="#333333", fill_color="#007acc", **kwargs
+    ):
+        super().__init__(parent, bg=bg, height=20, highlightthickness=0, **kwargs)
+        self.maximum = maximum
+        self.fill_color = fill_color
+        self.value = 0
+        self.rect = self.create_rectangle(0, 0, 0, 20, fill=fill_color, width=0)
+        self.bind("<Configure>", self._on_resize)
+
+    def _on_resize(self, event):
+        self._draw()
+
+    def _draw(self):
+        w = self.winfo_width()
+        h = self.winfo_height()
+        pct = max(0, min(1, self.value / self.maximum)) if self.maximum > 0 else 0
+        self.coords(self.rect, 0, 0, w * pct, h)
+
+    def __setitem__(self, key, value):
+        if key == "value":
+            self.value = value
+            self._draw()
 
 
 # -----------------------------
@@ -18,57 +44,109 @@ class MonitoringPage(BasePage):
             self.rowconfigure(i, weight=1)
 
         # Device status
-        dev_frame = ttk.Labelframe(self, text="Device Status", style="Card.TLabelframe")
+        dev_frame = tk.LabelFrame(
+            self,
+            text="Device Status",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11, "bold"),
+        )
         dev_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
 
-        self.lbl_tx_status = ttk.Label(
-            dev_frame, text="Transmitter: Unknown", style="Main.TLabel"
+        self.lbl_tx_status = tk.Label(
+            dev_frame,
+            text="Transmitter: Unknown",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11),
         )
         self.lbl_tx_status.pack(anchor="w", padx=10, pady=2)
 
-        self.lbl_rx_status = ttk.Label(
-            dev_frame, text="Control Station: Connected", style="Main.TLabel"
+        self.lbl_rx_status = tk.Label(
+            dev_frame,
+            text="Control Station: Connected",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11),
         )
         self.lbl_rx_status.pack(anchor="w", padx=10, pady=2)
 
         # Performance cards
-        perf_frame = ttk.Labelframe(
-            self, text="Performance Metrics", style="Card.TLabelframe"
+        perf_frame = tk.LabelFrame(
+            self,
+            text="Performance Metrics",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11, "bold"),
         )
         perf_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
 
-        self.cpu_bar = ttk.Progressbar(perf_frame, maximum=100)
+        self.cpu_bar = SimpleProgressBar(perf_frame, maximum=100)
         self.cpu_bar.pack(fill="x", padx=10, pady=2)
-        self.cpu_text = ttk.Label(perf_frame, text="CPU: -- %", style="Main.TLabel")
+        self.cpu_text = tk.Label(
+            perf_frame,
+            text="CPU: -- %",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11),
+        )
         self.cpu_text.pack(anchor="w", padx=10, pady=2)
 
-        self.ram_bar = ttk.Progressbar(perf_frame, maximum=100)
+        self.ram_bar = SimpleProgressBar(perf_frame, maximum=100)
         self.ram_bar.pack(fill="x", padx=10, pady=2)
-        self.ram_text = ttk.Label(perf_frame, text="RAM: -- %", style="Main.TLabel")
+        self.ram_text = tk.Label(
+            perf_frame,
+            text="RAM: -- %",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11),
+        )
         self.ram_text.pack(anchor="w", padx=10, pady=2)
 
-        self.disk_bar = ttk.Progressbar(perf_frame, maximum=100)
+        self.disk_bar = SimpleProgressBar(perf_frame, maximum=100)
         self.disk_bar.pack(fill="x", padx=10, pady=2)
-        self.disk_text = ttk.Label(perf_frame, text="Disk: -- %", style="Main.TLabel")
+        self.disk_text = tk.Label(
+            perf_frame,
+            text="Disk: -- %",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11),
+        )
         self.disk_text.pack(anchor="w", padx=10, pady=2)
 
-        net_frame = ttk.Labelframe(self, text="Network", style="Card.TLabelframe")
+        net_frame = tk.LabelFrame(
+            self,
+            text="Network",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11, "bold"),
+        )
         net_frame.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
 
-        self.net_up_label = ttk.Label(
-            net_frame, text="Up: -- kB/s", style="Main.TLabel"
+        self.net_up_label = tk.Label(
+            net_frame,
+            text="Up: -- kB/s",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11),
         )
         self.net_up_label.pack(anchor="w", padx=10, pady=2)
 
-        self.net_down_label = ttk.Label(
-            net_frame, text="Down: -- kB/s", style="Main.TLabel"
+        self.net_down_label = tk.Label(
+            net_frame,
+            text="Down: -- kB/s",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11),
         )
         self.net_down_label.pack(anchor="w", padx=10, pady=2)
 
-        self.software_version_label = ttk.Label(
+        self.software_version_label = tk.Label(
             net_frame,
             text=f"Software version: {PROJECT_METADATA.get('Version')}",
-            style="Main.TLabel",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 11),
         )
         self.software_version_label.pack(anchor="w", padx=10, pady=6)
 

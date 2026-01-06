@@ -5,18 +5,14 @@ import threading
 from collections import deque
 from datetime import datetime
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox
 import subprocess
 
 import psutil
 import serial  # pyserial
 import serial.tools.list_ports
+import random
 
-import matplotlib
-
-matplotlib.use("Agg")  # backend for embeddable canvas
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 import openpyxl
 
@@ -129,8 +125,13 @@ class MotionApp(tk.Tk):
         super().__init__()
 
         self.title(PROJECT_METADATA.get("Name"))
-        self.geometry("1024x600")  # good default for LCD; resizable
-        self.minsize(800, 480)
+        self.geometry(
+            f"{CONSTANTS.get('DEFAULT_SCREEN_SIZE')[0]}x{CONSTANTS.get('DEFAULT_SCREEN_SIZE')[1]}"
+        )  # good default for LCD; resizable
+        self.minsize(
+            CONSTANTS.get("DEFAULT_SCREEN_SIZE")[0],
+            CONSTANTS.get("DEFAULT_SCREEN_SIZE")[1],
+        )
         self.iconphoto(True, tk.PhotoImage(file=ICONS.get("logo")))
 
         # shared state
@@ -144,7 +145,7 @@ class MotionApp(tk.Tk):
         self.zigbee_thread = None
 
         # main container for pages
-        container = ttk.Frame(self)
+        container = tk.Frame(self, bg="#1e1e1e")
         container.pack(fill="both", expand=True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
@@ -152,7 +153,7 @@ class MotionApp(tk.Tk):
         self.container = container
         self.pages = {}
 
-        self._create_styles()
+        # self._create_styles()
         self._create_menu()
         self._create_toolbar()
 
@@ -171,48 +172,48 @@ class MotionApp(tk.Tk):
     # UI building
     # -----------------------------
 
-    def _create_styles(self):
-        style = ttk.Style(self)
-        if sys.platform == "win32":
-            style.theme_use("clam")
-
-        style.configure(
-            "Main.TFrame",
-            background="#1e1e1e",
-        )
-        style.configure(
-            "Card.TLabelframe",
-            background="#252526",
-            foreground="#ffffff",
-        )
-        style.configure(
-            "Card.TLabelframe.Label",
-            background="#252526",
-            foreground="#ffffff",
-            font=("Segoe UI", 11, "bold"),
-        )
-        style.configure(
-            "Main.TLabel",
-            background="#1e1e1e",
-            foreground="#ffffff",
-            font=("Segoe UI", 11),
-        )
-        style.configure(
-            "Value.TLabel",
-            background="#252526",
-            foreground="#00ff9f",
-            font=("Segoe UI", 16, "bold"),
-        )
-        style.configure(
-            "Nav.TButton",
-            font=("Segoe UI", 10, "bold"),
-            padding=6,
-        )
-        style.map(
-            "Nav.TButton",
-            background=[("active", "#007acc")],
-            foreground=[("active", "#ffffff")],
-        )
+    # def _create_styles(self):
+    #     style = ttk.Style(self)
+    #     if sys.platform == "win32":
+    #         style.theme_use("clam")
+    #
+    #     style.configure(
+    #         "Main.TFrame",
+    #         background="#1e1e1e",
+    #     )
+    #     style.configure(
+    #         "Card.TLabelframe",
+    #         background="#252526",
+    #         foreground="#ffffff",
+    #     )
+    #     style.configure(
+    #         "Card.TLabelframe.Label",
+    #         background="#252526",
+    #         foreground="#ffffff",
+    #         font=("Segoe UI", 11, "bold"),
+    #     )
+    #     style.configure(
+    #         "Main.TLabel",
+    #         background="#1e1e1e",
+    #         foreground="#ffffff",
+    #         font=("Segoe UI", 11),
+    #     )
+    #     style.configure(
+    #         "Value.TLabel",
+    #         background="#252526",
+    #         foreground="#00ff9f",
+    #         font=("Segoe UI", 16, "bold"),
+    #     )
+    #     style.configure(
+    #         "Nav.TButton",
+    #         font=("Segoe UI", 10, "bold"),
+    #         padding=6,
+    #     )
+    #     style.map(
+    #         "Nav.TButton",
+    #         background=[("active", "#007acc")],
+    #         foreground=[("active", "#ffffff")],
+    #     )
 
     def _create_menu(self):
         menubar = tk.Menu(self)
@@ -234,23 +235,31 @@ class MotionApp(tk.Tk):
         self.config(menu=menubar)
 
     def _create_toolbar(self):
-        self.toolbar = ttk.Frame(self, style="Main.TFrame")
+        self.toolbar = tk.Frame(self, bg="#1e1e1e")
 
         # initial geometry config; we will pack/unpack this same widget
         self.toolbar.pack(side="top", fill="x")
 
-        self.btn_on = ttk.Button(
+        self.btn_on = tk.Button(
             self.toolbar,
             text="Turn ON",
-            style="Nav.TButton",
+            font=("Segoe UI", 10, "bold"),
+            bg="#333333",
+            fg="#ffffff",
+            activebackground="#007acc",
+            activeforeground="#ffffff",
             command=self.turn_system_on,
         )
         # self.btn_on.pack(side="left", padx=5, pady=5)
 
-        self.btn_off = ttk.Button(
+        self.btn_off = tk.Button(
             self.toolbar,
             text="Turn OFF",
-            style="Nav.TButton",
+            font=("Segoe UI", 10, "bold"),
+            bg="#333333",
+            fg="#ffffff",
+            activebackground="#007acc",
+            activeforeground="#ffffff",
             command=lambda: (
                 self.turn_system_off,
                 self.toolbar.pack_forget(),
@@ -259,22 +268,34 @@ class MotionApp(tk.Tk):
         )
         self.btn_off.pack(side="left", padx=5, pady=5)
 
-        ttk.Button(
+        tk.Button(
             self.toolbar,
             text="Dashboard",
-            style="Nav.TButton",
+            font=("Segoe UI", 10, "bold"),
+            bg="#333333",
+            fg="#ffffff",
+            activebackground="#007acc",
+            activeforeground="#ffffff",
             command=lambda: self.show_page("DashboardPage"),
         ).pack(side="right", padx=5)
-        ttk.Button(
+        tk.Button(
             self.toolbar,
             text="Graphs",
-            style="Nav.TButton",
+            font=("Segoe UI", 10, "bold"),
+            bg="#333333",
+            fg="#ffffff",
+            activebackground="#007acc",
+            activeforeground="#ffffff",
             command=lambda: self.show_page("GraphsPage"),
         ).pack(side="right", padx=5)
-        ttk.Button(
+        tk.Button(
             self.toolbar,
             text="Monitoring",
-            style="Nav.TButton",
+            font=("Segoe UI", 10, "bold"),
+            bg="#333333",
+            fg="#ffffff",
+            activebackground="#007acc",
+            activeforeground="#ffffff",
             command=lambda: self.show_page("MonitoringPage"),
         ).pack(side="right", padx=5)
 
@@ -316,15 +337,15 @@ class MotionApp(tk.Tk):
             )
             self.zigbee_thread.start()
 
-        self.btn_on.state(["disabled"])
-        self.btn_off.state(["!disabled"])
+        self.btn_on.config(state="disabled")
+        self.btn_off.config(state="normal")
 
     def turn_system_off(self):
         self.system_on = False
         if self.zigbee_thread:
             self.zigbee_thread.stop()
-        self.btn_on.state(["!disabled"])
-        self.btn_off.state(["disabled"])
+        self.btn_on.config(state="normal")
+        self.btn_off.config(state="disabled")
 
     # -----------------------------
     # Periodic update
@@ -354,6 +375,13 @@ class MotionApp(tk.Tk):
             "net_up": sent_kbps,
             "net_down": recv_kbps,
             "timestamp": datetime.now(),
+            "transmitter": {
+                "cpu": random.uniform(10, 40),
+                "ram": random.uniform(20, 50),
+                "disk": 45.0 + random.uniform(-0.5, 0.5),
+                "net_up": random.uniform(0, 50),
+                "net_down": random.uniform(0, 50),
+            },
         }
 
         if self.system_on:

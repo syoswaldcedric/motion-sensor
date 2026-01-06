@@ -1,4 +1,4 @@
-from tkinter import ttk
+import tkinter as tk
 from .base_page import BasePage
 
 # import project metadata
@@ -23,15 +23,16 @@ class PowerOnPage(BasePage):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        frame = ttk.Frame(self, style="Main.TFrame")
+        frame = tk.Frame(self, bg="#1e1e1e")
         frame.grid(row=0, column=0, sticky="nsew", padx=40, pady=40)
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
 
-        title = ttk.Label(
+        title = tk.Label(
             frame,
             text=CONSTANTS.get("APP_TITLE"),
-            style="Main.TLabel",
+            bg="#1e1e1e",
+            fg="#ffffff",
             font=("Segoe UI", 18, "bold"),
         )
         title.pack(pady=30)
@@ -43,12 +44,16 @@ class PowerOnPage(BasePage):
         # )
         # subtitle.pack(pady=10)
 
-        power_button = ttk.Button(
+        power_button = tk.Button(
             frame,
             # image=tk.PhotoImage(file="./assets/power_btn_lg.png"),
             text="POWER ON",
             compound="top",
-            # style="Nav.TButton",
+            font=("Segoe UI", 14, "bold"),
+            bg="#333333",
+            fg="#ffffff",
+            activebackground="#007acc",
+            activeforeground="#ffffff",
             command=self._on_power_on_clicked,
         )
         power_button.pack(pady=40, ipadx=40, ipady=20)

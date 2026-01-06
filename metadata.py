@@ -1,17 +1,3 @@
-# metadata = {
-#     "name": "Motion Sensor Gui Application",
-#     "version": "1.0.0",
-#     "authors": ["OS", "AT", "EV"],
-#     "description": "Motion sensor application for Decentralised human movement measurement using ZigBee for indoor light steering at a staircase. The data is saved to a file.",
-#     "license": "MIT",
-#     "github_url": "https://github.com/syoswaldcedric/motion-sensor.git",
-#     "issues": "https://github.com/syoswaldcedric/motion-sensor/issues",
-#     "docs": "https://github.com/syoswaldcedric/motion-sensor/blob/main/README.md",
-# }
-
-
-# metadata.py
-
 PROJECT_METADATA = {
     "Name": "Human Movement Measurement HMI",
     "Version": "1.0.0",
@@ -54,4 +40,7 @@ CONSTANTS = {
     "MOTION_HISTORY_LENGTH": 50,
     "DEFAULT_SERIAL_PORT": "/dev/serial0",
     "DEFAULT_BAUDRATE": 115200,
+    # "DEFAULT_SCREEN_SIZE": (800, 600),
+    # default screen size for LCD 3.5"
+    "DEFAULT_SCREEN_SIZE": (480, 320),
 }
