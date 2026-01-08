@@ -37,6 +37,10 @@ It is recommended to use a virtual environment to manage dependencies.
 
     ```bash
     pip install -r requirements.txt
+
+    # alternative
+    sudo apt install python3-package-name
+    where 'package-name' is the name of the package
     ```
 
 ## Usage

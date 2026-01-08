@@ -186,9 +186,11 @@ class DashboardPage(BasePage):
         self.motion_state_var.set("Motion Present" if mv >= 0.5 else "Motion Absent")
 
         # dynamic image update
-        if mv >= 0.5:
+        # if mv >= 0.5:
+        if mv == 1:
             self.motion_value_label.config(image=self.light_on_img)
         else:
+            # wait for 5 seconds
             self.motion_value_label.config(image=self.light_off_img)
 
         self.update_display()

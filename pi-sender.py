@@ -1,8 +1,16 @@
+import RPi.GPIO as GPIO
 import serial
 import time
 
 # Serial setup
 ser = serial.Serial("/dev/ttyAMA0", 9600, timeout=1)
+
+INPUT_PIN = 17
+# GPIO setup
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(INPUT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+# print("Initializing GPIO pins")
+time.sleep(10)
 
 
 def send_message(msg):
@@ -24,9 +32,17 @@ if __name__ == "__main__":
     try:
         while True:
             # Send a test message
-            message = f"Hello from Pi A #{counter}"
-            send_message(message)
-            print(f"Sent: {message}")
+            # message = f"Hello from Pi A #{counter}"
+            sensor_value = GPIO.input(INPUT_PIN)
+            message = f"MOTION: {sensor_value}"
+            if sensor_value == 1:
+                send_message(message)
+                print(f"Sent: {message}")
+                time.sleep(3)
+            else:
+                send_message(message)
+                print(f"Sent: {message}")
+                time.sleep(0.5)
 
             # Read incoming message (if any)
             incoming = read_message()
@@ -34,7 +50,6 @@ if __name__ == "__main__":
                 print(f"Received: {incoming}")
 
             counter += 1
-            time.sleep(2)
 
     except KeyboardInterrupt:
         print("Exiting Pi A...")

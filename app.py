@@ -49,20 +49,23 @@ class MotionApp(tk.Tk):
         self.background_thread = None
 
         self.nav_buttons = {}
+        # Make window fullscreen
+        self.attributes("-fullscreen", True)
+
+        # Optional: close fullscreen with Escape key
+        self.bind("<Escape>", lambda e: self.destroy())
 
         # -----------------------------
         # Scrollable Main Layout
         # -----------------------------
-        # 1. Main layout frame (holds toolbar + canvas area)
-        main_layout = tk.Frame(self, bg="#1e1e1e")
-        main_layout.pack(fill="both", expand=True)
-
         self._create_menu()
 
-        # 2. Toolbar fixed at the top of the main layout
-        self.toolbar_container = tk.Frame(main_layout, bg="#1e1e1e")
-        self.toolbar_container.pack(side="top", fill="x")
+        # 2. Toolbar fixed at the top (sibling of main_layout)
         self._create_toolbar()
+
+        # 3. Main layout frame (holds canvas area)
+        main_layout = tk.Frame(self, bg="#1e1e1e")
+        main_layout.pack(fill="both", expand=True)
 
         # 3. Canvas and Scrollbar setup
         self.canvas = tk.Canvas(main_layout, bg="#1e1e1e", highlightthickness=0)
@@ -87,8 +90,6 @@ class MotionApp(tk.Tk):
             (0, 0), window=container, anchor="nw"
         )
 
-        # 5. Bindings for responsiveness
-
         # When container changes size (widgets added/removed), update scrollregion
         def on_frame_configure(event):
             self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -110,29 +111,33 @@ class MotionApp(tk.Tk):
             self.pages[PageClass.__name__] = page
             page.grid(row=0, column=0, sticky="nsew")
 
-        # hide toolbar on landing screen
+        # hide toolbar on landing screens
         self.toolbar.pack_forget()
         self.show_page("PowerOnPage")
         self.after(CONSTANTS.get("UPDATE_INTERVAL_MS"), self._periodic_update)
 
     def _create_menu(self):
-        menubar = tk.Menu(self)
+        self.menubar = tk.Menu(self)
 
-        file_menu = tk.Menu(menubar, tearoff=False)
-        help_menu = tk.Menu(menubar, tearoff=False)
+        self.file_menu = tk.Menu(self.menubar, tearoff=False)
+        help_menu = tk.Menu(self.menubar, tearoff=False)
 
-        file_menu.add_command(
+        self.file_menu.add_command(
             label="Save Measurements", command=self.save_measurements_to_excel
         )
-        file_menu.add_command(label="View Saved Files", command=self.view_saved_files)
-        file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.on_exit)
+
+        self.file_menu.add_command(
+            label="View Saved Files",
+            command=self.view_saved_files,
+        )
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Exit", command=self.on_exit)
 
         help_menu.add_command(label="About", command=self.show_project_info)
 
-        menubar.add_cascade(label="File", menu=file_menu)
-        menubar.add_cascade(label="Help", menu=help_menu)
-        self.config(menu=menubar)
+        self.menubar.add_cascade(label="File", menu=self.file_menu)
+        self.menubar.add_cascade(label="Help", menu=help_menu)
+        self.config(menu=self.menubar)
 
     def _create_toolbar(self):
         self.toolbar = tk.Frame(self, bg="#1e1e1e")
@@ -210,8 +215,23 @@ class MotionApp(tk.Tk):
     # -----------------------------
     # Navigation and lifecycle
     # -----------------------------
+    def enable_save_measurements(self):
+        self.file_menu.entryconfig("Save Measurements", state="normal")
+
+    def disable_save_measurements(self):
+        self.file_menu.entryconfig("Save Measurements", state="disabled")
+
+    # -----------------------------
+    # Navigation and lifecycle
+    # -----------------------------
 
     def show_page(self, name):
+        # print(f"name: {name}")
+        # disable save measurements if on power on page
+        if name == "PowerOnPage":
+            self.disable_save_measurements()
+        else:
+            self.enable_save_measurements()
         # Update button styles for navigation
         for page_name, btn in self.nav_buttons.items():
             if page_name == name:
@@ -254,6 +274,7 @@ class MotionApp(tk.Tk):
 
     def turn_system_off(self):
         self.system_on = False
+        self.file_menu.entryconfig("Save Measurements", state="disabled")
         if self.background_thread:
             self.background_thread.stop()
         self.btn_on.config(state="normal")
