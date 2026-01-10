@@ -25,7 +25,7 @@ class MotionReceiver(threading.Thread):
         # Try the configured port first
         try:
             self.serial = serial.Serial(self.port_name, self.baudrate, timeout=1)
-            print(f"Connected to ZigBee at {self.port_name}")
+            print(f"Established connection with Transmitter at {self.port_name}")
             return True
         except Exception:
             # Auto-detect if default failed

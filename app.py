@@ -18,7 +18,7 @@ from project_utils import MotionReceiver
 # import project metadata
 from metadata import PROJECT_METADATA, ICONS, CONSTANTS
 
-from pages import DashboardPage, MonitoringPage, GraphsPage, PowerOnPage
+from pages import DashboardPage, MonitoringPage, GraphsPage, PowerOnPage, LogsPage
 
 
 # -----------------------------
@@ -29,6 +29,7 @@ class MotionApp(tk.Tk):
         super().__init__()
 
         self.title(PROJECT_METADATA.get("Name"))
+        self.resizable(False, False)
         self.geometry(
             f"{CONSTANTS.get('DEFAULT_SCREEN_SIZE')[0]}x{CONSTANTS.get('DEFAULT_SCREEN_SIZE')[1]}"
         )  # good default for LCD; resizable
@@ -45,12 +46,14 @@ class MotionApp(tk.Tk):
         self.measurement_history = []
         self.current_motion_value = 0.0
 
+        self.logs = []
+
         # Motion receiver (lazy start when system is turned ON)
         self.background_thread = None
 
         self.nav_buttons = {}
         # Make window fullscreen
-        self.attributes("-fullscreen", True)
+        # self.attributes("-fullscreen", True)
 
         # Optional: close fullscreen with Escape key
         self.bind("<Escape>", lambda e: self.destroy())
@@ -59,9 +62,6 @@ class MotionApp(tk.Tk):
         # Scrollable Main Layout
         # -----------------------------
         self._create_menu()
-
-        # 2. Toolbar fixed at the top (sibling of main_layout)
-        self._create_toolbar()
 
         # 3. Main layout frame (holds canvas area)
         main_layout = tk.Frame(self, bg="#1e1e1e")
@@ -79,7 +79,8 @@ class MotionApp(tk.Tk):
         self.canvas.pack(side="left", fill="both", expand=True)
 
         # 4. Inner container for pages
-        container = tk.Frame(self.canvas, bg="#1e1e1e")
+        # container = tk.Frame(self.canvas, bg="#1e1e1e")
+        container = tk.Frame(self.canvas, bg="red")
 
         # Grid config for the pages inside the container
         container.grid_rowconfigure(0, weight=1)
@@ -89,6 +90,10 @@ class MotionApp(tk.Tk):
         self.canvas_frame = self.canvas.create_window(
             (0, 0), window=container, anchor="nw"
         )
+        self.container = container
+        self.pages = {}
+        # 2. Toolbar fixed at the top (sibling of main_layout)
+        self._create_toolbar()
 
         # When container changes size (widgets added/removed), update scrollregion
         def on_frame_configure(event):
@@ -102,17 +107,26 @@ class MotionApp(tk.Tk):
 
         self.canvas.bind("<Configure>", on_canvas_configure)
 
-        self.container = container
-        self.pages = {}
-
         # create pages
-        for PageClass in (PowerOnPage, DashboardPage, MonitoringPage, GraphsPage):
+        for PageClass in (
+            PowerOnPage,
+            DashboardPage,
+            MonitoringPage,
+            GraphsPage,
+            LogsPage,
+        ):
+            # for PageClass in (
+            #     DashboardPage,
+            #     PowerOnPage,
+            #     MonitoringPage,
+            # ):
             page = PageClass(parent=container, controller=self)
             self.pages[PageClass.__name__] = page
-            page.grid(row=0, column=0, sticky="nsew")
+            page.grid(row=1, column=0, sticky="nsew")
 
         # hide toolbar on landing screens
-        self.toolbar.pack_forget()
+        # self.toolbar.pack_forget()
+        self.toolbar.grid_forget()
         self.show_page("PowerOnPage")
         self.after(CONSTANTS.get("UPDATE_INTERVAL_MS"), self._periodic_update)
 
@@ -140,15 +154,18 @@ class MotionApp(tk.Tk):
         self.config(menu=self.menubar)
 
     def _create_toolbar(self):
-        self.toolbar = tk.Frame(self, bg="#1e1e1e")
+        # self.toolbar = tk.Frame(self, bg="#1e1e1e")
+        # self.toolbar = tk.Frame(self.canvas, bg="#1e1e1e")
+        self.toolbar = tk.Frame(self.container, bg="#1e1e1e")
+        self.toolbar.grid(row=0, column=0, sticky="nsew")
 
         # initial geometry config; we will pack/unpack this same widget
-        self.toolbar.pack(side="top", fill="x")
+        # self.toolbar.pack(side="top", fill="x")
 
         self.btn_on = tk.Button(
             self.toolbar,
             text="Turn ON",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#333333",
             fg="#ffffff",
             activebackground="#007acc",
@@ -160,14 +177,14 @@ class MotionApp(tk.Tk):
         self.btn_off = tk.Button(
             self.toolbar,
             text="Turn OFF",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#333333",
             fg="#ffffff",
             activebackground="#007acc",
             activeforeground="#ffffff",
             command=lambda: (
                 self.turn_system_off,
-                self.toolbar.pack_forget(),
+                self.toolbar.grid_forget(),
                 self.show_page("PowerOnPage"),
             ),
         )
@@ -176,7 +193,7 @@ class MotionApp(tk.Tk):
         self.nav_buttons["DashboardPage"] = tk.Button(
             self.toolbar,
             text="Dashboard",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#333333",
             fg="#ffffff",
             activebackground="#007acc",
@@ -188,7 +205,7 @@ class MotionApp(tk.Tk):
         self.nav_buttons["GraphsPage"] = tk.Button(
             self.toolbar,
             text="Graphs",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#333333",
             fg="#ffffff",
             activebackground="#007acc",
@@ -197,10 +214,22 @@ class MotionApp(tk.Tk):
         )
         self.nav_buttons["GraphsPage"].pack(side="right", padx=5)
 
+        self.nav_buttons["LogsPage"] = tk.Button(
+            self.toolbar,
+            text="Logs",
+            font=("Segoe UI", 9, "bold"),
+            bg="#333333",
+            fg="#ffffff",
+            activebackground="#007acc",
+            activeforeground="#ffffff",
+            command=lambda: self.show_page("LogsPage"),
+        )
+        self.nav_buttons["LogsPage"].pack(side="right", padx=5)
+
         self.nav_buttons["MonitoringPage"] = tk.Button(
             self.toolbar,
             text="Monitoring",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#333333",
             fg="#ffffff",
             activebackground="#007acc",
@@ -210,7 +239,11 @@ class MotionApp(tk.Tk):
         self.nav_buttons["MonitoringPage"].pack(side="right", padx=5)
 
         # remember pack options so we can show it again later
-        self._toolbar_pack_opts = {"side": "top", "fill": "x"}
+        self._toolbar_pack_opts = {
+            "side": "top",
+            "fill": "x",
+            # "before": self.controller,
+        }
 
     # -----------------------------
     # Navigation and lifecycle
@@ -265,7 +298,8 @@ class MotionApp(tk.Tk):
                 port=CONSTANTS.get("DEFAULT_SERIAL_PORT"),
                 baudrate=CONSTANTS.get("DEFAULT_BAUDRATE"),
                 motion_buffer=self.motion_values,
-                use_mock_if_fail=True,  # change to False for strict serial only
+                # TODO: set true in development only, change to False for strict serial only
+                use_mock_if_fail=True,
             )
             self.background_thread.start()
 
@@ -309,7 +343,9 @@ class MotionApp(tk.Tk):
             "net_down": recv_kbps,
             "timestamp": datetime.now(),
             "version": CONSTANTS.get("DEVICE_VERSION"),
+            # "logs": "{type: 'info', message: 'System is on'}, {type: 'warning', message: 'Transmitter station is offline'}, {type: 'error', message: 'motion sensor is offline'}",
             "transmitter": {
+                "logs": "{type: 'info', message: 'System is on'}, {type: 'warning', message: 'Transmitter station is offline'}, {type: 'error', message: 'motion sensor is offline'}",
                 "cpu": random.uniform(10, 40),
                 "ram": random.uniform(20, 50),
                 "disk": 45.0 + random.uniform(-0.5, 0.5),

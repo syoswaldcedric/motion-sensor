@@ -49,7 +49,7 @@ class MonitoringPage(BasePage):
             text="Device Status",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 10, "bold"),
         )
         dev_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
 
@@ -58,7 +58,7 @@ class MonitoringPage(BasePage):
             text="Transmitter: Unknown",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
         self.lbl_tx_status.pack(anchor="w", padx=10, pady=2)
 
@@ -67,17 +67,17 @@ class MonitoringPage(BasePage):
             text="Control Station: Connected",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
         self.lbl_rx_status.pack(anchor="w", padx=10, pady=2)
 
         # Performance cards
         perf_frame = tk.LabelFrame(
             self,
-            text="Performance Metrics",
+            text="Performance Logs",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 8, "bold"),
         )
         perf_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
 
@@ -88,7 +88,7 @@ class MonitoringPage(BasePage):
             text="CPU: -- %",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
         self.cpu_text.pack(anchor="w", padx=10, pady=2)
 
@@ -99,7 +99,7 @@ class MonitoringPage(BasePage):
             text="RAM: -- %",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
         self.ram_text.pack(anchor="w", padx=10, pady=2)
 
@@ -110,7 +110,7 @@ class MonitoringPage(BasePage):
             text="Disk: -- %",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
         self.disk_text.pack(anchor="w", padx=10, pady=2)
 
@@ -119,7 +119,7 @@ class MonitoringPage(BasePage):
             text="Network",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 8, "bold"),
         )
         net_frame.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
 
@@ -128,27 +128,27 @@ class MonitoringPage(BasePage):
             text="Up: -- kB/s",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
-        self.net_up_label.pack(anchor="w", padx=10, pady=2)
+        self.net_up_label.pack(anchor="w", padx=10, pady=1)
 
         self.net_down_label = tk.Label(
             net_frame,
             text="Down: -- kB/s",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
-        self.net_down_label.pack(anchor="w", padx=10, pady=2)
+        self.net_down_label.pack(anchor="w", padx=10, pady=1)
 
         self.software_version_label = tk.Label(
             net_frame,
             text=f"Software version: {PROJECT_METADATA.get('Version')}",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
-        self.software_version_label.pack(anchor="w", padx=10, pady=6)
+        self.software_version_label.pack(anchor="w", padx=10, pady=3)
 
     def update_data(self, metrics, motion_series):
         cpu = metrics["cpu"]

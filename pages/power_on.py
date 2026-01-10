@@ -24,21 +24,25 @@ class PowerOnPage(BasePage):
         self.rowconfigure(0, weight=1)
 
         frame = tk.Frame(self, bg="#1e1e1e")
-        frame.grid(row=0, column=0, sticky="nsew", padx=40, pady=40)
-        frame.columnconfigure(0, weight=1)
+        frame.pack(fill="both", expand=True)
+        # frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=10)
+        # frame.columnconfigure(0, weight=1)
+
+        center_frame = tk.Frame(frame, bg="#1e1e1e")
+        center_frame.pack(anchor="center", expand=True)
 
         title = tk.Label(
-            frame,
+            center_frame,
             text=PROJECT_METADATA.get("Name", "Motion Sensor HMI"),
             bg="#1e1e1e",
             fg="#ffffff",
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", 14, "bold"),
             justify="center",
         )
-        title.pack(pady=30, anchor="center")
+        title.pack(anchor="center", pady=15)
 
         power_button = tk.Button(
-            frame,
+            center_frame,
             # image=tk.PhotoImage(file="./assets/power_btn_lg.png"),
             text="POWER ON",
             compound="top",
@@ -49,11 +53,13 @@ class PowerOnPage(BasePage):
             activeforeground="#ffffff",
             command=self._on_power_on_clicked,
         )
-        power_button.pack(pady=40, ipadx=40, ipady=20)
+        power_button.pack(anchor="center", ipadx=40, ipady=10, expand=True)
 
     def _on_power_on_clicked(self):
         self.controller.turn_system_on()
         # show toolbar again using stored pack options
+        print(getattr(self.controller, "toolbar", None))
         if getattr(self.controller, "toolbar", None):
-            self.controller.toolbar.pack(**self.controller._toolbar_pack_opts)
+            # self.controller.toolbar.pack(**self.controller._toolbar_pack_opts)
+            self.controller.toolbar.grid(row=0, column=0, sticky="nsew")
         self.controller.show_page("DashboardPage")

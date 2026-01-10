@@ -26,11 +26,11 @@ class GraphsPage(BasePage):
             text="Motion Sensor History",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 9, "bold"),
         )
         frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
-        self.figure = Figure(figsize=(5, 3), dpi=100)
+        self.figure = Figure(figsize=(5, 2), dpi=100)
         self.ax = self.figure.add_subplot(111)
         self.ax.set_title(
             f"Last {CONSTANTS.get('MOTION_HISTORY_LENGTH')} Motion Values",

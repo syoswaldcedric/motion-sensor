@@ -1,9 +1,15 @@
 import tkinter as tk
-from .base_page import BasePage
 from tkinter import PhotoImage
+import platform
+
 
 # import project metadata
+from .base_page import BasePage
 from metadata import CONSTANTS
+
+os_name = platform.system()
+os_version = platform.version()
+os_release = platform.release()
 
 
 # -----------------------------
@@ -33,14 +39,7 @@ class DashboardPage(BasePage):
             text="Motion Sensor",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11, "bold"),
-        )
-        motion_frame = tk.LabelFrame(
-            self,
-            text="Motion Sensor",
-            bg="#252526",
-            fg="#ffffff",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 9, "bold"),
         )
         motion_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
@@ -52,7 +51,7 @@ class DashboardPage(BasePage):
             text="0.0",
             bg="#252526",
             fg="#00ff9f",
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", 9, "bold"),
         )
         self.motion_value_label.pack(anchor="center", pady=10)
 
@@ -61,7 +60,7 @@ class DashboardPage(BasePage):
             textvariable=self.motion_state_var,
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
         )
         self.motion_state_label.pack(anchor="center", pady=5)
 
@@ -79,7 +78,7 @@ class DashboardPage(BasePage):
         self.btn_control = tk.Button(
             btn_frame,
             text="Control Station",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#333333",
             fg="#ffffff",
             activebackground="#007acc",
@@ -91,7 +90,7 @@ class DashboardPage(BasePage):
         self.btn_transmitter = tk.Button(
             btn_frame,
             text="Transmitter",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#333333",
             fg="#ffffff",
             activebackground="#007acc",
@@ -105,45 +104,55 @@ class DashboardPage(BasePage):
             text="CPU: -- %",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
-        self.cpu_label.pack(anchor="w", padx=10, pady=2)
+        self.cpu_label.pack(anchor="w", padx=10, pady=1)
 
         self.ram_label = tk.Label(
             self.sys_frame,
             text="RAM: -- %",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
-        self.ram_label.pack(anchor="w", padx=10, pady=2)
+        self.ram_label.pack(anchor="w", padx=10, pady=1)
 
         self.device_label = tk.Label(
             self.sys_frame,
             text="Device: --",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
         )
-        self.device_label.pack(anchor="w", padx=10, pady=2)
+        self.device_label.pack(anchor="w", padx=10, pady=1)
+        self.os_label = tk.Label(
+            self.sys_frame,
+            text="OS: --",
+            bg="#252526",
+            fg="#ffffff",
+            font=("Segoe UI", 8),
+        )
+        self.os_label.pack(anchor="w", padx=10, pady=1)
 
         self.disk_label = tk.Label(
             self.sys_frame,
             text="Disk: -- %",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
-        self.disk_label.pack(anchor="w", padx=10, pady=2)
+        self.disk_label.pack(anchor="w", padx=10, pady=1)
 
         self.net_label = tk.Label(
             self.sys_frame,
             text="Net: up -- kB/s, down -- kB/s",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
         )
-        self.net_label.pack(anchor="w", padx=10, pady=2)
+        self.net_label.pack(
+            anchor="w", padx=10, pady=0
+        )  # remove padding from last element
 
         # System control frame
         control_frame = tk.LabelFrame(
@@ -151,10 +160,10 @@ class DashboardPage(BasePage):
             text="System Control",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 9, "bold"),
         )
         control_frame.grid(
-            row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=5
+            row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=5, ipady=1
         )
 
         self.system_state_label = tk.Label(
@@ -162,7 +171,7 @@ class DashboardPage(BasePage):
             text="System is OFF",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
         )
         self.system_state_label.pack(anchor="w", padx=10, pady=3)
 
@@ -173,7 +182,7 @@ class DashboardPage(BasePage):
             fg="#ffffff",
             font=("Segoe UI", 10),
         )
-        info_label.pack(anchor="w", padx=10, pady=3)
+        info_label.pack(anchor="w", padx=10)
 
         # Initial button state
         self.set_station(self.selected_station)
@@ -223,6 +232,7 @@ class DashboardPage(BasePage):
             disk = data.get("disk", 0.0)
             net_up = data.get("net_up", 0.0)
             net_down = data.get("net_down", 0.0)
+            os_label = ms.get("os", "---")
         else:
             # Default control station
             cpu = ms.get("cpu", 0.0)
@@ -230,10 +240,12 @@ class DashboardPage(BasePage):
             disk = ms.get("disk", 0.0)
             net_up = ms.get("net_up", 0.0)
             net_down = ms.get("net_down", 0.0)
+            os_label = ms.get("os", f"{os_name} {os_version} {os_release}")
 
         self.cpu_label.config(text=f"CPU: {cpu:.1f} %")
         self.ram_label.config(text=f"RAM: {ram:.1f} %")
         self.disk_label.config(text=f"Disk: {disk:.1f} %")
+        self.os_label.config(text=f"OS: {os_label}")
         self.device_label.config(
             text=f"Device: {CONSTANTS.get('DEVICE_VERSION').get(self.selected_station.lower())}"
         )

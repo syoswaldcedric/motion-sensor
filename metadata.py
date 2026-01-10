@@ -2,7 +2,7 @@ PROJECT_METADATA = {
     "Name": "Human Movement Measurement",
     "Version": "1.0.0",
     "Authors": ["Oswald Syndric", "Anh Tuan", "Ego Victor"],
-    "Description": "A multi-page Tkinter GUI for monitoring a Raspberry Pi/ZigBee-based motion detection system. Designed for industrial-grade HMI.",
+    "Description": "A multi-page Tkinter GUI for monitoring a Raspberry Pi/ZigBee-based motion detection system.",
     "Hardware": [
         "2x Raspberypi 1b+",
         "2x zigbee xbee 3 module",
@@ -18,7 +18,7 @@ PROJECT_METADATA = {
 
 # Define a theme for the HMI look
 HMI_COLORS = {
-    "BACKGROUND": "#2C3E50",  # Dark Blue/Grey (Industrial Look)
+    "BACKGROUND": "#2C3E50",  # Dark Blue/Grey
     "FOREGROUND": "#ECF0F1",  # Light Grey/White
     "ACCENT": "#E74C3C",  # Red (for alerts/power off)
     "PRIMARY": "#2ECC71",  # Green (for power on/status OK)
@@ -41,7 +41,11 @@ CONSTANTS = {
     "DEFAULT_SERIAL_PORT": "/dev/ttyAMA0",
     "DEFAULT_BAUDRATE": 9600,
     # default screen size for LCD 3.5"
-    "DEFAULT_SCREEN_SIZE": (480, 320),
+    # "DEFAULT_SCREEN_SIZE": (480, 320),
+    "DEFAULT_SCREEN_SIZE": (
+        480,
+        300,
+    ),  # using 300 inside of 320 to accommodate the device taskbar
     "DEVICE_VERSION": {
         "transmitter": "Raspberypi 1b+ v1.2",
         "control_station": "Raspberypi 1b+ v1.2",
