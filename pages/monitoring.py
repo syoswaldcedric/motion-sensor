@@ -150,7 +150,7 @@ class MonitoringPage(BasePage):
         )
         self.software_version_label.pack(anchor="w", padx=10, pady=3)
 
-    def update_data(self, metrics, motion_series):
+    def update_data(self, metrics, motion_series, logs):
         cpu = metrics["cpu"]
         ram = metrics["ram"]
         disk = metrics["disk"]

@@ -1,7 +1,6 @@
 import threading
 import serial.tools.list_ports
 import time
-import json
 
 
 # -----------------------------
@@ -60,26 +59,6 @@ class MotionReceiver(threading.Thread):
         except Exception:
             return None
 
-    def parse_transmitter_data(self, raw_line):
-        """
-        The transmitter sends lines like: 'MOTION:0' or 'MOTION:1'
-        '{"MOTION": {"value": 1}, "LOG": {"type": "info", "message": "System is on"}}'
-        """
-        try:
-            line = raw_line.strip().decode("utf-8", errors="ignore")
-
-            if not line:
-                return None
-
-            json_data = json.loads(line)
-            motion = json_data.get("MOTION")
-            log = json_data.get("LOG")
-
-            return motion, log
-        except Exception as e:
-            print("Failed to parse transmitter data", e)
-            return None
-
     def mock_motion_value(self):
         """
         Simple motion value mock generator for testing: alternates between 0 and 1.
@@ -99,12 +78,9 @@ class MotionReceiver(threading.Thread):
             if self.serial:
                 try:
                     raw = self.serial.readline()
-                    (motion, log) = self.parse_transmitter_data(raw)
-                    print(motion, log)
-                    if motion is not None:
-                        self.motion_buffer.append(motion)
-                    if log is not None:
-                        self.log_buffer.append(log)
+                    value = self.parse_motion_value(raw)
+                    if value is not None:
+                        self.motion_buffer.append(value)
                 except Exception:
                     # fall back to mock data if serial fails mid‑run
                     if self.use_mock_if_fail:

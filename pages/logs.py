@@ -64,7 +64,9 @@ class LogsPage(BasePage):
         )
         self.logs_text.pack(anchor="w", padx=10, pady=2)
 
-    def update_data(self, metrics, motion_series):
+    def update_data(self, metrics, motion_series, logs):
+        # logs = metrics.get("logs", "Logs not sent")
+        print(logs)
         logs = metrics.get("logs", "Logs not sent")
 
         self.logs_text.config(text=f"Logs: {logs}")

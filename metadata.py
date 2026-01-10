@@ -40,6 +40,7 @@ CONSTANTS = {
     "MOTION_HISTORY_LENGTH": 50,
     "DEFAULT_SERIAL_PORT": "/dev/ttyAMA0",
     "DEFAULT_BAUDRATE": 9600,
+    "LOGS_HISTORY_LENGTH": 30,
     # default screen size for LCD 3.5"
     # "DEFAULT_SCREEN_SIZE": (480, 320),
     "DEFAULT_SCREEN_SIZE": (

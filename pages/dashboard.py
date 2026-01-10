@@ -187,7 +187,7 @@ class DashboardPage(BasePage):
         # Initial button state
         self.set_station(self.selected_station)
 
-    def update_data(self, metrics, motion_series):
+    def update_data(self, metrics, motion_series, logs):
         self.last_metrics = metrics
         mv = metrics["motion"]
         self.motion_value_label.config(text=f"{mv:.2f}")

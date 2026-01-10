@@ -46,7 +46,8 @@ class MotionApp(tk.Tk):
         self.measurement_history = []
         self.current_motion_value = 0.0
 
-        self.logs = []
+        # self.log_buffer = deque(maxlen=CONSTANTS.get("LOGS_HISTORY_LENGTH"))
+        self.log_buffer = []
 
         # Motion receiver (lazy start when system is turned ON)
         self.background_thread = None
@@ -345,7 +346,7 @@ class MotionApp(tk.Tk):
             "version": CONSTANTS.get("DEVICE_VERSION"),
             # "logs": "{type: 'info', message: 'System is on'}, {type: 'warning', message: 'Transmitter station is offline'}, {type: 'error', message: 'motion sensor is offline'}",
             "transmitter": {
-                "logs": "{type: 'info', message: 'System is on'}, {type: 'warning', message: 'Transmitter station is offline'}, {type: 'error', message: 'motion sensor is offline'}",
+                "log": "{type: 'info', message: 'System is on'}, {type: 'warning', message: 'Transmitter station is offline'}, {type: 'error', message: 'motion sensor is offline'}",
                 "cpu": random.uniform(10, 40),
                 "ram": random.uniform(20, 50),
                 "disk": 45.0 + random.uniform(-0.5, 0.5),
@@ -360,7 +361,7 @@ class MotionApp(tk.Tk):
 
         # propagate metrics to pages
         for page in self.pages.values():
-            page.update_data(metrics, list(self.motion_values))
+            page.update_data(metrics, list(self.motion_values), self.log_buffer)
 
         self.after(CONSTANTS.get("UPDATE_INTERVAL_MS"), self._periodic_update)
 

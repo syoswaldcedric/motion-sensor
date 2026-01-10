@@ -49,7 +49,7 @@ class GraphsPage(BasePage):
         self.canvas = FigureCanvasTkAgg(self.figure, master=frame)
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
 
-    def update_data(self, metrics, motion_series):
+    def update_data(self, metrics, motion_series, logs):
         if not motion_series:
             return
 

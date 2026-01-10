@@ -9,7 +9,7 @@ class BasePage(tk.Frame):
         super().__init__(parent, bg="#1e1e1e")
         self.controller = controller
 
-    def update_data(self, metrics, motion_series):
+    def update_data(self, metrics, motion_series, logs):
         """
         Called every second by the controller.
         Child classes override this method.
