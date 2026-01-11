@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from utils.constants import HMI_COLORS, CONSTANTS
+from utils.constants import HMI_COLORS, CONSTANTS, DEFAULT_CONFIG
 from utils.settings_manager import SettingsManager
 
 
@@ -199,6 +199,17 @@ class PreferencesWindow(tk.Toplevel):
             width=10,
             relief="flat",
         ).pack(side="left", padx=10)
+
+        tk.Button(
+            btn_frame,
+            text="Reset",
+            command=self.reset_preferences,
+            bg=HMI_COLORS["INFO"],
+            fg="white",
+            width=10,
+            relief="flat",
+        ).pack(side="left", padx=10)
+
         tk.Button(
             btn_frame,
             text="Cancel",
@@ -261,3 +272,17 @@ class PreferencesWindow(tk.Toplevel):
             self.destroy()
         else:
             messagebox.showerror("Error", "Failed to save preferences.")
+
+    def reset_preferences(self):
+        if messagebox.askyesno(
+            "Reset Preferences",
+            "Are you sure you want to reset all preferences to default values? This cannot be undone.",
+        ):
+            if SettingsManager.save_settings(DEFAULT_CONFIG):
+                messagebox.showinfo(
+                    "Success",
+                    "Preferences reset to defaults. Please restart the application.",
+                )
+                self.destroy()
+            else:
+                messagebox.showerror("Error", "Failed to reset preferences.")
