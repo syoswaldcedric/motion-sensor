@@ -5,7 +5,7 @@ import platform
 
 # import project metadata
 from .base_page import BasePage
-from metadata import CONSTANTS
+from utils.constants import CONSTANTS
 
 os_name = platform.system()
 os_version = platform.version()

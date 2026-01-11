@@ -13,10 +13,12 @@ import random
 import openpyxl
 
 
-from project_utils import MotionReceiver
+from components import CustomMessageBox, PreferencesWindow
+from utils import MotionReceiver
 
 # import project metadata
-from metadata import PROJECT_METADATA, ICONS, CONSTANTS
+from metadata import PROJECT_METADATA
+from utils.constants import CONSTANTS, ICONS
 
 from pages import DashboardPage, MonitoringPage, GraphsPage, PowerOnPage, LogsPage
 
@@ -134,6 +136,8 @@ class MotionApp(tk.Tk):
         self.file_menu.add_command(
             label="Save Measurements", command=self.save_measurements_to_excel
         )
+
+        self.file_menu.add_command(label="Preferences", command=self.show_preferences)
 
         self.file_menu.add_command(
             label="View Saved Files",
@@ -377,6 +381,10 @@ class MotionApp(tk.Tk):
             f"Issues: {PROJECT_METADATA.get('Issues')}"
         )
         messagebox.showinfo(f"About {PROJECT_METADATA.get('Name')}", msg)
+        # CustomMessageBox(f"About {PROJECT_METADATA.get('Name')}", msg)
+
+    def show_preferences(self):
+        PreferencesWindow(self)
 
     def _default_save_directory(self):
         base = os.path.join(os.path.expanduser("~"), "motion_measurements")

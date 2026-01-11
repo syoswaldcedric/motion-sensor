@@ -8,7 +8,7 @@ import matplotlib
 matplotlib.use("Agg")  # backend for embeddable canvas
 
 # import project metadata
-from metadata import CONSTANTS
+from utils.constants import CONSTANTS
 
 
 # -----------------------------

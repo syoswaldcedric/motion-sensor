@@ -1,0 +1,36 @@
+{
+    "HMI_COLORS": {
+        "BACKGROUND": "#2C3E50",
+        "FOREGROUND": "#ECF0F1",
+        "ACCENT": "#E74C3C",
+        "PRIMARY": "#2ECC71",
+        "DANGER": "#C0392B",
+        "INFO": "#3498DB",
+        "TEXT_BRIGHT": "#FFFFFF",
+        "TEXT_DIM": "#BDC3C7"
+    },
+    "ICONS": {
+        "logo": "assets/graph.png"
+    },
+    "CONSTANTS": {
+        "UPDATE_INTERVAL_MS": 1000,
+        "IS_FULLSCREEN": false,
+        "MOTION_HISTORY_LENGTH": 50,
+        "DEFAULT_SERIAL_PORT": "/dev/ttyAMA0",
+        "DEFAULT_BAUDRATE": 9600,
+        "LOGS_HISTORY_LENGTH": 19,
+        "DEFAULT_SCREEN_SIZE": [
+            480,
+            300
+        ],
+        "DEVICE_VERSION": {
+            "control_station": "Raspberypi 1b+ v1.2"
+        },
+        "MESSAGE_TYPES": {
+            "MOTION": "MOTION",
+            "LOGS": "LOGS",
+            "PERFORMANCE_STATUS": "PERFORMANCE_STATUS"
+        },
+        "USE_MOCK_DATA": false
+    }
+}

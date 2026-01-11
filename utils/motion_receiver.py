@@ -4,7 +4,7 @@ import time
 import json
 
 # import project metadata
-from metadata import CONSTANTS
+from utils.constants import CONSTANTS
 
 
 # -----------------------------

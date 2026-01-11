@@ -2,7 +2,8 @@ import tkinter as tk
 from .base_page import BasePage
 
 # import project metadata
-from metadata import CONSTANTS, PROJECT_METADATA
+from metadata import PROJECT_METADATA
+from utils import CONSTANTS
 
 
 # -----------------------------
