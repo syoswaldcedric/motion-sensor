@@ -3,6 +3,9 @@ import serial.tools.list_ports
 import time
 import json
 
+# import project metadata
+from metadata import CONSTANTS
+
 
 # -----------------------------
 # Data acquisition
@@ -13,36 +16,40 @@ class MotionReceiver(threading.Thread):
     pushes motion values to a shared deque.
     """
 
-    def __init__(self, port, baudrate, motion_buffer, use_mock_if_fail=True):
+    def __init__(
+        self,
+        port,
+        baudrate,
+        motion_buffer,
+        log_buffer,
+        transmitter_status,
+        use_mock_if_fail=True,
+    ):
         super().__init__(daemon=True)
         self.port_name = port
         self.baudrate = baudrate
         self.motion_buffer = motion_buffer
+        self.log_buffer = log_buffer
+        self.transmitter_status = transmitter_status
         self.use_mock_if_fail = use_mock_if_fail
         self.running = False
         self.serial = None
 
     def open_port(self):
-        # Try the configured port first
+        # Try the configured port
         try:
             self.serial = serial.Serial(self.port_name, self.baudrate, timeout=1)
             print(f"Established connection with Transmitter at {self.port_name}")
             return True
-        except Exception:
-            # Auto-detect if default failed
-            ports = list(serial.tools.list_ports.comports())
-            # for p in ports:
-            #     try:
-            #         # Avoid obviously wrong ports if possible, or just try the first available
-            #         self.serial = serial.Serial(p.device, self.baudrate, timeout=1)
-            #         print(f"Auto-detected and connected to ZigBee at {p.device}")
-            #         return True
-            #     except Exception:
-            #         continue
+        except Exception as e:
+            msg = f"Host port communication failed: {e}"
+            print(msg)
+            self.log_buffer.append(msg)
 
             self.serial = None
             return False
 
+    # DEPRECATED: use parse_transmitter_data instead
     def parse_motion_value(self, raw_line):
         """
         The transmitter sends lines like: 'MOTION:0' or 'MOTION:1'
@@ -72,10 +79,10 @@ class MotionReceiver(threading.Thread):
                 return None
 
             json_data = json.loads(line)
-            motion = json_data.get("MOTION")
-            log = json_data.get("LOG")
+            type = json_data.get("type")
+            data = json_data.get("data")
 
-            return motion, log
+            return type, data
         except Exception as e:
             print("Failed to parse transmitter data", e)
             return None
@@ -99,12 +106,16 @@ class MotionReceiver(threading.Thread):
             if self.serial:
                 try:
                     raw = self.serial.readline()
-                    (motion, log) = self.parse_transmitter_data(raw)
-                    print(motion, log)
-                    if motion is not None:
-                        self.motion_buffer.append(motion)
-                    if log is not None:
-                        self.log_buffer.append(log)
+                    (type, data) = self.parse_transmitter_data(raw)
+                    print(type, data)
+                    if type == CONSTANTS.get("MESSAGE_TYPES").get("MOTION"):
+                        self.motion_buffer.append(data)
+                    elif type == CONSTANTS.get("MESSAGE_TYPES").get("LOGS"):
+                        self.log_buffer.append(data)
+                    elif type == CONSTANTS.get("MESSAGE_TYPES").get(
+                        "PERFORMANCE_STATUS"
+                    ):
+                        self.transmitter_status = data
                 except Exception:
                     # fall back to mock data if serial fails mid‑run
                     if self.use_mock_if_fail:

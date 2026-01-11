@@ -46,15 +46,15 @@ class MotionApp(tk.Tk):
         self.measurement_history = []
         self.current_motion_value = 0.0
 
-        # self.log_buffer = deque(maxlen=CONSTANTS.get("LOGS_HISTORY_LENGTH"))
-        self.log_buffer = []
+        self.log_buffer = deque(maxlen=CONSTANTS.get("LOGS_HISTORY_LENGTH"))
+        self.transmitter_status = dict()
 
         # Motion receiver (lazy start when system is turned ON)
         self.background_thread = None
 
         self.nav_buttons = {}
         # Make window fullscreen
-        # self.attributes("-fullscreen", True)
+        self.attributes("-fullscreen", CONSTANTS.get("IS_FULLSCREEN", False))
 
         # Optional: close fullscreen with Escape key
         self.bind("<Escape>", lambda e: self.destroy())
@@ -116,17 +116,11 @@ class MotionApp(tk.Tk):
             GraphsPage,
             LogsPage,
         ):
-            # for PageClass in (
-            #     DashboardPage,
-            #     PowerOnPage,
-            #     MonitoringPage,
-            # ):
             page = PageClass(parent=container, controller=self)
             self.pages[PageClass.__name__] = page
             page.grid(row=1, column=0, sticky="nsew")
 
         # hide toolbar on landing screens
-        # self.toolbar.pack_forget()
         self.toolbar.grid_forget()
         self.show_page("PowerOnPage")
         self.after(CONSTANTS.get("UPDATE_INTERVAL_MS"), self._periodic_update)
@@ -156,7 +150,6 @@ class MotionApp(tk.Tk):
 
     def _create_toolbar(self):
         # self.toolbar = tk.Frame(self, bg="#1e1e1e")
-        # self.toolbar = tk.Frame(self.canvas, bg="#1e1e1e")
         self.toolbar = tk.Frame(self.container, bg="#1e1e1e")
         self.toolbar.grid(row=0, column=0, sticky="nsew")
 
@@ -299,8 +292,10 @@ class MotionApp(tk.Tk):
                 port=CONSTANTS.get("DEFAULT_SERIAL_PORT"),
                 baudrate=CONSTANTS.get("DEFAULT_BAUDRATE"),
                 motion_buffer=self.motion_values,
+                log_buffer=self.log_buffer,
+                transmitter_status=self.transmitter_status,
                 # TODO: set true in development only, change to False for strict serial only
-                use_mock_if_fail=True,
+                use_mock_if_fail=CONSTANTS.get("USE_MOCK_DATA"),
             )
             self.background_thread.start()
 
@@ -320,6 +315,8 @@ class MotionApp(tk.Tk):
     # -----------------------------
 
     def _periodic_update(self):
+        # for i in range(30):
+        #     self.log_buffer.append(f"Log {i}")
         # latest motion value
         if self.motion_values:
             self.current_motion_value = self.motion_values[-1]
@@ -344,16 +341,16 @@ class MotionApp(tk.Tk):
             "net_down": recv_kbps,
             "timestamp": datetime.now(),
             "version": CONSTANTS.get("DEVICE_VERSION"),
-            # "logs": "{type: 'info', message: 'System is on'}, {type: 'warning', message: 'Transmitter station is offline'}, {type: 'error', message: 'motion sensor is offline'}",
-            "transmitter": {
-                "log": "{type: 'info', message: 'System is on'}, {type: 'warning', message: 'Transmitter station is offline'}, {type: 'error', message: 'motion sensor is offline'}",
-                "cpu": random.uniform(10, 40),
-                "ram": random.uniform(20, 50),
-                "disk": 45.0 + random.uniform(-0.5, 0.5),
-                "net_up": random.uniform(0, 50),
-                "net_down": random.uniform(0, 50),
-                "version": CONSTANTS.get("DEVICE_VERSION"),
-            },
+            "transmitter_status": self.transmitter_status,
+            # "transmitter": {
+            #     "log": "{type: 'info', message: 'System is on'}, {type: 'warning', message: 'Transmitter station is offline'}, {type: 'error', message: 'motion sensor is offline'}",
+            #     "cpu": random.uniform(10, 40),
+            #     "ram": random.uniform(20, 50),
+            #     "disk": 45.0 + random.uniform(-0.5, 0.5),
+            #     "net_up": random.uniform(0, 50),
+            #     "net_down": random.uniform(0, 50),
+            #     "version": CONSTANTS.get("DEVICE_VERSION"),
+            # },
         }
 
         if self.system_on:
@@ -361,7 +358,7 @@ class MotionApp(tk.Tk):
 
         # propagate metrics to pages
         for page in self.pages.values():
-            page.update_data(metrics, list(self.motion_values), self.log_buffer)
+            page.update_data(metrics, list(self.motion_values), list(self.log_buffer))
 
         self.after(CONSTANTS.get("UPDATE_INTERVAL_MS"), self._periodic_update)
 

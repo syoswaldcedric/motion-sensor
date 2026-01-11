@@ -49,9 +49,9 @@ class MonitoringPage(BasePage):
             text="Device Status",
             bg="#252526",
             fg="#ffffff",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
         )
-        dev_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+        dev_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
 
         self.lbl_tx_status = tk.Label(
             dev_frame,
@@ -74,12 +74,12 @@ class MonitoringPage(BasePage):
         # Performance cards
         perf_frame = tk.LabelFrame(
             self,
-            text="Performance Logs",
+            text="Performance",
             bg="#252526",
             fg="#ffffff",
             font=("Segoe UI", 8, "bold"),
         )
-        perf_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        perf_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
 
         self.cpu_bar = SimpleProgressBar(perf_frame, maximum=100)
         self.cpu_bar.pack(fill="x", padx=10, pady=2)

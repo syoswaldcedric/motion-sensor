@@ -37,10 +37,11 @@ ICONS = {"logo": "assets/graph.png"}
 # -----------------------------
 CONSTANTS = {
     "UPDATE_INTERVAL_MS": 1000,  # 1 second GUI update
+    "IS_FULLSCREEN": False,
     "MOTION_HISTORY_LENGTH": 50,
     "DEFAULT_SERIAL_PORT": "/dev/ttyAMA0",
     "DEFAULT_BAUDRATE": 9600,
-    "LOGS_HISTORY_LENGTH": 30,
+    "LOGS_HISTORY_LENGTH": 10,
     # default screen size for LCD 3.5"
     # "DEFAULT_SCREEN_SIZE": (480, 320),
     "DEFAULT_SCREEN_SIZE": (
@@ -48,7 +49,15 @@ CONSTANTS = {
         300,
     ),  # using 300 inside of 320 to accommodate the device taskbar
     "DEVICE_VERSION": {
-        "transmitter": "Raspberypi 1b+ v1.2",
+        # "transmitter": "Raspberypi 1b+ v1.2",
         "control_station": "Raspberypi 1b+ v1.2",
     },
+    # used across the control and transmitter stations
+    # Keys should be the same across the control and transmitter stations
+    "MESSAGE_TYPES": {
+        "MOTION": "MOTION",
+        "LOGS": "LOGS",
+        "PERFORMANCE_STATUS": "PERFORMANCE_STATUS",
+    },
+    "USE_MOCK_DATA": False,
 }
