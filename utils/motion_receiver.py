@@ -2,9 +2,15 @@ import threading
 import serial.tools.list_ports
 import time
 import json
+from datetime import datetime
 
 # import project metadata
 from utils.constants import CONSTANTS
+from pathlib import Path
+
+LOG_DIR = Path(CONSTANTS.get("LOG_DIR", Path.cwd()))
+date = datetime.now().strftime("%Y-%m-%d")
+LOG_FILE = LOG_DIR / date / "motion_log.txt"
 
 
 # -----------------------------
@@ -43,6 +49,7 @@ class MotionReceiver(threading.Thread):
             return True
         except Exception as e:
             msg = f"Host port communication failed: {e}"
+            self.update_logfile(msg)
             print(msg)
             self.log_buffer.append(msg)
 
@@ -66,6 +73,15 @@ class MotionReceiver(threading.Thread):
             return float(line)
         except Exception:
             return None
+
+    def update_logfile(self, log):
+        LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(LOG_FILE, "a") as f:
+            try:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"{timestamp}: {log}\n")
+            except Exception as e:
+                print(f"Failed to write to log file: {e}")
 
     def parse_transmitter_data(self, raw_line):
         """
@@ -112,6 +128,7 @@ class MotionReceiver(threading.Thread):
                         self.motion_buffer.append(data)
                     elif type == CONSTANTS.get("MESSAGE_TYPES").get("LOGS"):
                         self.log_buffer.append(data)
+                        self.update_logfile(data)
                     elif type == CONSTANTS.get("MESSAGE_TYPES").get(
                         "PERFORMANCE_STATUS"
                     ):

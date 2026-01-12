@@ -1,0 +1,2 @@
+2026-01-12 11:22:16: Host port communication failed: could not open port '/dev/ttyAMA0': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-01-12 11:22:44: Host port communication failed: could not open port '/dev/ttyAMA0': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)

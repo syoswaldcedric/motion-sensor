@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 from utils.constants import HMI_COLORS, CONSTANTS, DEFAULT_CONFIG
 from utils.settings_manager import SettingsManager
 
@@ -123,6 +123,34 @@ class PreferencesWindow(tk.Toplevel):
         self.spin_logs.insert(0, CONSTANTS.get("LOGS_HISTORY_LENGTH", 10))
         self.spin_logs.grid(row=3, column=1, sticky="ew", pady=5)
 
+        # Logs Directory
+        tk.Label(
+            frame,
+            text="Logs Directory:",
+            bg=HMI_COLORS["BACKGROUND"],
+            fg=HMI_COLORS["FOREGROUND"],
+            font=("Segoe UI", 10),
+        ).grid(row=4, column=0, sticky="w", pady=5)
+
+        log_dir_frame = tk.Frame(frame, bg=HMI_COLORS["BACKGROUND"])
+        log_dir_frame.grid(row=4, column=1, sticky="ew", pady=5)
+
+        self.entry_log_dir = tk.Entry(
+            log_dir_frame, bg="#3E3E42", fg="#FFFFFF", insertbackground="white"
+        )
+        self.entry_log_dir.insert(0, CONSTANTS.get("LOG_DIR", "logs"))
+        self.entry_log_dir.pack(side="left", fill="x", expand=True)
+
+        tk.Button(
+            log_dir_frame,
+            text="...",
+            command=self.browse_log_dir,
+            bg="#3E3E42",
+            fg="white",
+            width=3,
+            relief="flat",
+        ).pack(side="right", padx=(5, 0))
+
         # Use Mock Data
         self.var_mock = tk.BooleanVar(value=CONSTANTS.get("USE_MOCK_DATA", False))
         self.check_mock = tk.Checkbutton(
@@ -136,7 +164,7 @@ class PreferencesWindow(tk.Toplevel):
             activeforeground=HMI_COLORS["FOREGROUND"],
             font=("Segoe UI", 10),
         )
-        self.check_mock.grid(row=4, column=0, columnspan=2, sticky="w", pady=10)
+        self.check_mock.grid(row=5, column=0, columnspan=2, sticky="w", pady=10)
 
         # -----------------------------
         # Advanced Settings
@@ -149,13 +177,13 @@ class PreferencesWindow(tk.Toplevel):
             bg=HMI_COLORS["BACKGROUND"],
             fg=HMI_COLORS["FOREGROUND"],
             font=("Segoe UI", 10),
-        ).grid(row=5, column=0, sticky="w", pady=5)
+        ).grid(row=6, column=0, sticky="w", pady=5)
         self.entry_version = tk.Entry(
             frame, bg="#3E3E42", fg="#FFFFFF", insertbackground="white"
         )
         dev_ver = CONSTANTS.get("DEVICE_VERSION", {}).get("control_station", "")
         self.entry_version.insert(0, dev_ver)
-        self.entry_version.grid(row=5, column=1, sticky="ew", pady=5)
+        self.entry_version.grid(row=6, column=1, sticky="ew", pady=5)
 
         # Message Types (Editable Keys)
         tk.Label(
@@ -164,11 +192,11 @@ class PreferencesWindow(tk.Toplevel):
             bg=HMI_COLORS["BACKGROUND"],
             fg=HMI_COLORS["FOREGROUND"],
             font=("Segoe UI", 10, "bold"),
-        ).grid(row=6, column=0, sticky="w", pady=(10, 5))
+        ).grid(row=7, column=0, sticky="w", pady=(10, 5))
 
         self.msg_type_entries = {}
         msg_types = CONSTANTS.get("MESSAGE_TYPES", {})
-        row_idx = 7
+        row_idx = 8
         for key, val in msg_types.items():
             tk.Label(
                 frame,
@@ -228,6 +256,7 @@ class PreferencesWindow(tk.Toplevel):
 
         # Validation could be added here
         constants_settings["DEFAULT_SERIAL_PORT"] = self.entry_port.get()
+        constants_settings["LOG_DIR"] = self.entry_log_dir.get()
 
         try:
             constants_settings["DEFAULT_BAUDRATE"] = int(self.entry_baud.get())
@@ -286,3 +315,11 @@ class PreferencesWindow(tk.Toplevel):
                 self.destroy()
             else:
                 messagebox.showerror("Error", "Failed to reset preferences.")
+
+    def browse_log_dir(self):
+        directory = filedialog.askdirectory(
+            initialdir=self.entry_log_dir.get(), title="Select Logs Directory"
+        )
+        if directory:
+            self.entry_log_dir.delete(0, "end")
+            self.entry_log_dir.insert(0, directory)

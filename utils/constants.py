@@ -2,6 +2,7 @@
 # Configuration and constants
 # -----------------------------
 from utils.settings_manager import SettingsManager
+from pathlib import Path
 
 # Default Configuration
 DEFAULT_CONFIG = {
@@ -30,6 +31,8 @@ DEFAULT_CONFIG = {
             "LOGS": "LOGS",
             "PERFORMANCE_STATUS": "PERFORMANCE_STATUS",
         },
+        # "LOG_DIR": Path.cwd(),
+        "LOG_DIR": "hello",
         "USE_MOCK_DATA": False,
     },
 }

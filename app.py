@@ -13,7 +13,7 @@ import random
 import openpyxl
 
 
-from components import CustomMessageBox, PreferencesWindow
+from components import PreferencesWindow
 from utils import MotionReceiver
 
 # import project metadata
@@ -82,8 +82,7 @@ class MotionApp(tk.Tk):
         self.canvas.pack(side="left", fill="both", expand=True)
 
         # 4. Inner container for pages
-        # container = tk.Frame(self.canvas, bg="#1e1e1e")
-        container = tk.Frame(self.canvas, bg="red")
+        container = tk.Frame(self.canvas, bg="#1e1e1e")
 
         # Grid config for the pages inside the container
         container.grid_rowconfigure(0, weight=1)
