@@ -56,23 +56,7 @@ class MotionReceiver(threading.Thread):
             self.serial = None
             return False
 
-    # DEPRECATED: use parse_transmitter_data instead
-    def parse_motion_value(self, raw_line):
-        """
-        The transmitter sends lines like: 'MOTION:0' or 'MOTION:1'
-        """
-        try:
-            line = raw_line.strip().decode("utf-8")
-            print(f"Received: {line}")
-            if not line:
-                return None
-            if "MOTION:" in line:
-                _, val = line.split("MOTION:", 1)
-                print(f"ExtractedMotion value: {val}")
-                return float(val.strip())
-            return float(line)
-        except Exception:
-            return None
+
 
     def update_logfile(self, log):
         LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -89,12 +73,13 @@ class MotionReceiver(threading.Thread):
         '{"MOTION": {"value": 1}, "LOG": {"type": "info", "message": "System is on"}}'
         """
         try:
-            line = raw_line.strip().decode("utf-8", errors="ignore")
+            line = raw_line.decode("utf-8", errors="ignore").strip()
 
-            if not line:
+            if not line or len(line) < 1:
                 return None
 
             json_data = json.loads(line)
+            
             type = json_data.get("type")
             data = json_data.get("data")
 
@@ -122,17 +107,23 @@ class MotionReceiver(threading.Thread):
             if self.serial:
                 try:
                     raw = self.serial.readline()
-                    (type, data) = self.parse_transmitter_data(raw)
-                    print(type, data)
-                    if type == CONSTANTS.get("MESSAGE_TYPES").get("MOTION"):
-                        self.motion_buffer.append(data)
-                    elif type == CONSTANTS.get("MESSAGE_TYPES").get("LOGS"):
-                        self.log_buffer.append(data)
-                        self.update_logfile(data)
-                    elif type == CONSTANTS.get("MESSAGE_TYPES").get(
-                        "PERFORMANCE_STATUS"
-                    ):
-                        self.transmitter_status = data
+                    (message_type, data) = self.parse_transmitter_data(raw)
+                    
+                    print(f'type {type}, data: {data}')
+                    
+                    if data and message_type:
+                        if message_type == CONSTANTS.get("MESSAGE_TYPES").get("MOTION", "MOTION"):
+                            motion = int(data)
+                            self.motion_buffer.append(motion)
+                        elif message_type == CONSTANTS.get("MESSAGE_TYPES").get("LOGS", "LOGS"):
+                            self.log_buffer.append(data)
+                            self.update_logfile(data)
+                        elif message_type == CONSTANTS.get("MESSAGE_TYPES").get(
+                            "PERFORMANCE_STATUS"
+                        ):
+                            self.transmitter_status = data
+                        else:
+                            pass
                 except Exception:
                     # fall back to mock data if serial fails mid‑run
                     if self.use_mock_if_fail:

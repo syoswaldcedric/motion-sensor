@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 import serial
 import time
-import datetime
+from datetime import datetime
 import psutil
 import json
 
@@ -31,7 +31,8 @@ class PiSender:
     def send_message(self, type, msg):
         data = {"type": type, "data": msg}
         str_data = json.dumps(data)
-        ser.write(str_data.encode("utf-8") + b"\n")
+        # ser.write(str_data.encode("utf-8") + b"\n")
+        ser.write(str_data)
         print(f"Sent: {str_data}")
 
     def read_message(self):
@@ -55,25 +56,25 @@ class PiSender:
                 "disk": psutil.disk_usage("/").percent,
                 "net_up": sent_kbps,
                 "net_down": recv_kbps,
-                "timestamp": datetime.now(),
+                "timestamp": f"{datetime.now()}",
                 "version": "Raspberypi 1b+ v1.2",
             },
         }
-        str_data = json.dumps(data)
-        print(str_data)
-        self.send_message(MESSAGE_TYPES.get("PERFORMANCE_STATUS"), str_data)
+        self.send_message(MESSAGE_TYPES.get("PERFORMANCE_STATUS"), data)
 
     def run(self):
         try:
             while True:
                 # Send a test message
                 sensor_value = GPIO.input(INPUT_PIN)
-                message = f"MOTION: {sensor_value}"
+                # self.send_message(MESSAGE_TYPES.get("LOGS"), message)
                 if sensor_value == 1:
-                    self.send_message(MESSAGE_TYPES.get("MOTION"), message)
-                    time.sleep(3)
+                    self.send_message(MESSAGE_TYPES.get("MOTION"), sensor_value)
+                    time.sleep(1)
+                    self.send_message(MESSAGE_TYPES.get("LOGS"), "MOTION DETECTED")
+                    time.sleep(2)
                 else:
-                    self.send_message(MESSAGE_TYPES.get("MOTION"), message)
+                    self.send_message(MESSAGE_TYPES.get("MOTION"), sensor_value)
                     time.sleep(0.5)
 
                 # Read incoming message (if any)

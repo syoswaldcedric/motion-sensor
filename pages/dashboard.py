@@ -225,7 +225,8 @@ class DashboardPage(BasePage):
         # Select dataset
         if self.selected_station == "transmitter":
             # Use mock transmitter data
-            data = ms.get("transmitter", {})
+            data = CONSTANTS.get("transmitter_status")
+            # ms.get("transmitter", {})
             # Ensure safe fallback if data missing
             cpu = data.get("cpu", 0.0)
             ram = data.get("ram", 0.0)
@@ -245,7 +246,7 @@ class DashboardPage(BasePage):
         self.cpu_label.config(text=f"CPU: {cpu:.1f} %")
         self.ram_label.config(text=f"RAM: {ram:.1f} %")
         self.disk_label.config(text=f"Disk: {disk:.1f} %")
-        self.os_label.config(text=f"OS: {os_label}")
+        self.os_label.config(text=f"OS: {os_label[0:15]}")
         self.device_label.config(
             text=f"Device: {CONSTANTS.get('DEVICE_VERSION').get(self.selected_station.lower())}"
         )

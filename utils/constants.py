@@ -3,6 +3,7 @@
 # -----------------------------
 from utils.settings_manager import SettingsManager
 from pathlib import Path
+import random
 
 # Default Configuration
 DEFAULT_CONFIG = {
@@ -30,6 +31,14 @@ DEFAULT_CONFIG = {
             "MOTION": "MOTION",
             "LOGS": "LOGS",
             "PERFORMANCE_STATUS": "PERFORMANCE_STATUS",
+        },
+        "transmitter_status": {
+            "cpu": 0.0,
+            "ram": 0.0,
+            "disk": 0.0,
+            "net_up": 0.0,
+            "net_down": 0.0,
+            "version": "Raspberypi 1b+ v1.2",
         },
         # "LOG_DIR": Path.cwd(),
         "LOG_DIR": "hello",

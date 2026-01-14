@@ -88,7 +88,7 @@ class LogsPage(BasePage):
         # Let's clear the frame first to be safe and clean.
         # logs = metrics.get("logs", "Logs not sent")
 
-        print(logs)
+        print(f'logs: {logs}')
         if len(logs) > 0:
             for widget in self.scrollable_frame.winfo_children():
                 widget.destroy()

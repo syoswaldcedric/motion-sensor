@@ -39,6 +39,7 @@ class GraphsPage(BasePage):
         self.ax.set_xlabel("Sample")
         self.ax.set_ylabel("Value")
         self.ax.set_ylim(-0.1, 1.1)
+        self.ax.set_yticks([0.0, 1.0])
         (self.line,) = self.ax.plot(
             range(CONSTANTS.get("MOTION_HISTORY_LENGTH")),
             [0] * CONSTANTS.get("MOTION_HISTORY_LENGTH"),

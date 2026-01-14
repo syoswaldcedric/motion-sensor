@@ -7,3 +7,7 @@ pyserial==3.5
 # matplotlib==2.2.5
 # psutil==5.6.6
 # openpyxl==3.1.4
+# pyserial==3.4
+
+
+## apt install python-

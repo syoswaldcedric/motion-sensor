@@ -60,21 +60,6 @@ python app.py
 
 ## Decisions
 
-**UI Design:** QtCreator + PySide6
-
-- unfortunately rasperypi 1b+ does not support pyqt6 and pyside6. We tried earlier versions of both pyqt and pyside but they did not work. so we decided to use tkinter.
-
-pyqt_app.py is the main entry point for the pyqt application.
-
-**Pros of Pyqt6:**
-
-- Seamless integration with Qt Designer
-- More features and customization
-
-**Cons of Pyqt6:**
-
-- Not supported on rasperypi 1b+
-
 **TKinter:**
 app.py is the main entry point for the tkinter application.
 

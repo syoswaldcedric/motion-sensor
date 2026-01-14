@@ -49,6 +49,7 @@ class MotionApp(tk.Tk):
         self.current_motion_value = 0.0
 
         self.log_buffer = deque(maxlen=CONSTANTS.get("LOGS_HISTORY_LENGTH"))
+
         self.transmitter_status = dict()
 
         # Motion receiver (lazy start when system is turned ON)
@@ -346,7 +347,6 @@ class MotionApp(tk.Tk):
             "version": CONSTANTS.get("DEVICE_VERSION"),
             "transmitter_status": self.transmitter_status,
             # "transmitter": {
-            #     "log": "{type: 'info', message: 'System is on'}, {type: 'warning', message: 'Transmitter station is offline'}, {type: 'error', message: 'motion sensor is offline'}",
             #     "cpu": random.uniform(10, 40),
             #     "ram": random.uniform(20, 50),
             #     "disk": 45.0 + random.uniform(-0.5, 0.5),

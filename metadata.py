@@ -9,9 +9,9 @@ PROJECT_METADATA = {
         "1x pir motion sensor",
     ],
     "Communication": "ZigBee Wireless Serial",
-    "License": "MIT",
+    "License": "XYZ",
     "GitHub URL": "https://github.com/syoswaldcedric/motion-sensor.git",
     "Issues": "https://github.com/syoswaldcedric/motion-sensor/issues",
     "Docs": "https://github.com/syoswaldcedric/motion-sensor/blob/main/README.md",
-    "Last Updated": "December 14, 2025",
+    "Last Updated": "January 14, 2026",
 }
