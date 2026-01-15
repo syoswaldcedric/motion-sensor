@@ -85,35 +85,36 @@ class LogsPage(BasePage):
         self.logs_text.pack(anchor="w", padx=10, pady=2)
 
     def update_data(self, metrics, motion_series, logs):
+        pass
         # Let's clear the frame first to be safe and clean.
         # logs = metrics.get("logs", "Logs not sent")
 
-        print(f'logs: {logs}')
-        if len(logs) > 0:
-            for widget in self.scrollable_frame.winfo_children():
-                widget.destroy()
+        # print(f'logs: {logs}')
+        # if len(logs) > 0:
+        #     for widget in self.scrollable_frame.winfo_children():
+        #         widget.destroy()
 
-            for log in logs:
-                label = tk.Label(
-                    self.scrollable_frame,
-                    text=f"{log}",
-                    bg="#252526",
-                    fg="#ffffff",
-                    font=("Segoe UI", 8),
-                )
-                label.pack(anchor="w", padx=10, pady=1)
+        #     for log in logs:
+        #         label = tk.Label(
+        #             self.scrollable_frame,
+        #             text=f"{log}",
+        #             bg="#252526",
+        #             fg="#ffffff",
+        #             font=("Segoe UI", 8),
+        #         )
+        #         label.pack(anchor="w", padx=10, pady=1)
 
-        # if self.controller.system_on and motion_series and any(motion_series):
-        if not self.controller.transmitter_status:
-            tx_status = "Transmitter: Unreachable"
-        elif self.controller.system_on:
-            tx_status = "Transmitter: Connected"
-        else:
-            tx_status = "Transmitter: Off"
+        # # if self.controller.system_on and motion_series and any(motion_series):
+        # if not self.controller.transmitter_status:
+        #     tx_status = "Transmitter: Unreachable"
+        # elif self.controller.system_on:
+        #     tx_status = "Transmitter: Connected"
+        # else:
+        #     tx_status = "Transmitter: Off"
 
-        self.lbl_tx_status.config(text=tx_status)
-        self.lbl_rx_status.config(
-            text="Control Station: Receiving data"
-            if self.controller.system_on
-            else "Control Station: Idle"
-        )
+        # self.lbl_tx_status.config(text=tx_status)
+        # self.lbl_rx_status.config(
+        #     text="Control Station: Receiving data"
+        #     if self.controller.system_on
+        #     else "Control Station: Idle"
+        # )

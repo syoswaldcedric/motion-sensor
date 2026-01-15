@@ -36,12 +36,12 @@ class PiSender:
     #     print(f"Sent: {str_data}")
 
     def send_message(self, type, msg):
-        data = f"{type}:{msg}"
+        data = {"type": type, "data": msg}
 
-        # str_data = json.dumps(data, ensure_ascii=True)
-        ser.write(data.encode("utf-8") + b"\n")
+        str_data = json.dumps(data, ensure_ascii=True)
+        ser.write(str_data.encode("ascii") + b"\n")
 
-        # print(f"Sent: {str_data}")
+        print(f"Sent: {str_data}")
 
     def read_message(self):
         line = ser.readline()
@@ -68,7 +68,7 @@ class PiSender:
                 "version": "Raspberypi 1b+ v1.2",
             },
         }
-        # self.send_message(MESSAGE_TYPES.get("PERFORMANCE_STATUS"), data)
+        self.send_message(MESSAGE_TYPES.get("PERFORMANCE_STATUS"), data)
 
     def run(self):
         try:

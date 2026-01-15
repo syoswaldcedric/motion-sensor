@@ -345,15 +345,16 @@ class MotionApp(tk.Tk):
             "net_down": recv_kbps,
             "timestamp": datetime.now(),
             "version": CONSTANTS.get("DEVICE_VERSION"),
-            "transmitter_status": self.transmitter_status,
-            # "transmitter": {
-            #     "cpu": random.uniform(10, 40),
-            #     "ram": random.uniform(20, 50),
-            #     "disk": 45.0 + random.uniform(-0.5, 0.5),
-            #     "net_up": random.uniform(0, 50),
-            #     "net_down": random.uniform(0, 50),
-            #     "version": CONSTANTS.get("DEVICE_VERSION"),
-            # },
+            "transmitter_status": {
+                "motion": self.current_motion_value,
+                "cpu": cpu,
+                "ram": ram,
+                "disk": disk,
+                "net_up": sent_kbps,
+                "net_down": recv_kbps,
+                "timestamp": datetime.now(),
+                "version": CONSTANTS.get("DEVICE_VERSION"),
+            },
         }
 
         if self.system_on:

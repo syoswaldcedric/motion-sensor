@@ -192,7 +192,7 @@ class DashboardPage(BasePage):
         mv = metrics["motion"]
         self.motion_value_label.config(text=f"{mv:.2f}")
 
-        self.motion_state_var.set("Motion Present" if mv >= 0.5 else "Motion Absent")
+        self.motion_state_var.set("Motion Present" if mv == 1 else "Motion Absent")
 
         # dynamic image update
         # if mv >= 0.5:
@@ -223,33 +223,43 @@ class DashboardPage(BasePage):
 
         ms = self.last_metrics
         # Select dataset
-        if self.selected_station == "transmitter":
-            # Use mock transmitter data
-            data = CONSTANTS.get("transmitter_status")
-            # ms.get("transmitter", {})
-            # Ensure safe fallback if data missing
-            cpu = data.get("cpu", 0.0)
-            ram = data.get("ram", 0.0)
-            disk = data.get("disk", 0.0)
-            net_up = data.get("net_up", 0.0)
-            net_down = data.get("net_down", 0.0)
-            os_label = ms.get("os", "---")
-        else:
-            # Default control station
-            cpu = ms.get("cpu", 0.0)
-            ram = ms.get("ram", 0.0)
-            disk = ms.get("disk", 0.0)
-            net_up = ms.get("net_up", 0.0)
-            net_down = ms.get("net_down", 0.0)
-            os_label = ms.get("os", f"{os_name} {os_version} {os_release}")
+        # if self.selected_station == "transmitter":
+        #     # Use mock transmitter data
+        #     data = CONSTANTS.get("transmitter_status")
+
+        #     # Ensure safe fallback if data missing
+        #     cpu = data.get("cpu", 0.0)
+        #     ram = data.get("ram", 0.0)
+        #     disk = data.get("disk", 0.0)
+        #     net_up = data.get("net_up", 0.0)
+        #     net_down = data.get("net_down", 0.0)
+        #     os_label = ms.get("os", "---")
+        # else:
+        # Default control station
+        # cpu = ms.get("cpu", 0.0)
+        # ram = ms.get("ram", 0.0)
+        # disk = ms.get("disk", 0.0)
+        # net_up = ms.get("net_up", 0.0)
+        # net_down = ms.get("net_down", 0.0)
+        # os_label = ms.get("os", f"{os_name} {os_version} {os_release}")
+
+        cpu = ms.get("cpu", 0.0)
+        ram = ms.get("ram", 0.0)
+        disk = ms.get("disk", 0.0)
+        net_up = ms.get("net_up", 0.0)
+        net_down = ms.get("net_down", 0.0)
+        os_label = ms.get("os", f"{os_name} {os_version} {os_release}")
 
         self.cpu_label.config(text=f"CPU: {cpu:.1f} %")
         self.ram_label.config(text=f"RAM: {ram:.1f} %")
         self.disk_label.config(text=f"Disk: {disk:.1f} %")
         self.os_label.config(text=f"OS: {os_label[0:15]}")
         self.device_label.config(
-            text=f"Device: {CONSTANTS.get('DEVICE_VERSION').get(self.selected_station.lower())}"
+            text=f"Device: {CONSTANTS.get('DEVICE_VERSION').get('control_station')}"
         )
+        # self.device_label.config(
+        #     text=f"Device: {CONSTANTS.get('DEVICE_VERSION').get(self.selected_station.lower())}"
+        # )
         self.net_label.config(
             text=f"Net: up {net_up:.1f} kB/s, down {net_down:.1f} kB/s"
         )
